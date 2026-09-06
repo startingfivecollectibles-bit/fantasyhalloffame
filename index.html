@@ -18,8 +18,8 @@
           sans: ['Inter', 'sans-serif'],
         },
         colors: {
-          obsidian: '#090d16',
-          obsidian2: '#0d1220',
+          obsidian: '#0f172a',
+          field: '#eef6ff',
           gold: {
             50: '#fdf8e8',
             100: '#f9edc0',
@@ -31,8 +31,8 @@
           }
         },
         boxShadow: {
-          'gold-glow': '0 0 0 1px rgba(251,191,36,0.25), 0 0 24px rgba(251,191,36,0.10)',
-          'gold-glow-lg': '0 0 0 1px rgba(251,191,36,0.35), 0 0 40px rgba(251,191,36,0.18)',
+          'gold-glow': '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(56,132,255,0.10)',
+          'gold-glow-lg': '0 2px 4px rgba(15,23,42,0.05), 0 12px 36px rgba(56,132,255,0.16)',
         }
       }
     }
@@ -45,21 +45,22 @@
 
 <style>
   body {
-    background-color: #090d16;
+    background-color: #f4f9ff;
     background-image:
-      radial-gradient(circle at 20% 10%, rgba(197,155,46,0.06), transparent 40%),
-      radial-gradient(circle at 80% 0%, rgba(197,155,46,0.05), transparent 35%),
-      repeating-linear-gradient(45deg, rgba(255,255,255,0.008) 0px, rgba(255,255,255,0.008) 1px, transparent 1px, transparent 3px);
+      radial-gradient(circle at 15% 0%, rgba(56,132,255,0.10), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(56,132,255,0.08), transparent 40%),
+      linear-gradient(180deg, #eaf3ff 0%, #f7fbff 35%, #ffffff 100%);
+    background-attachment: fixed;
   }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: #090d16; }
-  ::-webkit-scrollbar-thumb { background: rgba(197,155,46,0.35); border-radius: 6px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(197,155,46,0.55); }
+  ::-webkit-scrollbar-track { background: #eef6ff; }
+  ::-webkit-scrollbar-thumb { background: rgba(14,116,222,0.35); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(14,116,222,0.55); }
 
   .plaque-texture {
     background:
-      linear-gradient(160deg, rgba(255,255,255,0.03), transparent 40%),
-      linear-gradient(#141a2b, #0b0f1a);
+      linear-gradient(160deg, rgba(56,132,255,0.04), transparent 45%),
+      linear-gradient(#ffffff, #fbfdff);
   }
   .vault-card {
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
@@ -80,12 +81,12 @@
     animation: shimmer 6s linear infinite;
   }
   .modal-backdrop {
-    background: rgba(2,4,9,0.82);
+    background: rgba(15,23,42,0.45);
     backdrop-filter: blur(3px);
   }
 </style>
 </head>
-<body class="min-h-screen text-amber-50 font-sans">
+<body class="min-h-screen text-slate-800 font-sans">
 <div id="root"></div>
 
 <script type="text/babel">
@@ -3330,7 +3331,804 @@ const DATA = {
       "aPoints": 255.2,
       "bPoints": 188.32
     }
-  ]
+  ],
+  "history": {
+    "work": [
+      {
+        "year": 2024,
+        "championId": "romina-papa",
+        "runnerUpId": "matt-shaffer"
+      },
+      {
+        "year": 2025,
+        "championId": "romina-papa",
+        "runnerUpId": "jessie-qutami"
+      }
+    ],
+    "football2": [
+      {
+        "year": 2013,
+        "championId": "greg-wylie",
+        "runnerUpId": "kevin-bayly"
+      },
+      {
+        "year": 2014,
+        "championId": "matt-shaffer",
+        "runnerUpId": "mark-tannahill"
+      },
+      {
+        "year": 2015,
+        "championId": "drew-gallegos",
+        "runnerUpId": "paul-sullivan"
+      },
+      {
+        "year": 2016,
+        "championId": "mark-tannahill",
+        "runnerUpId": "greg-wylie"
+      },
+      {
+        "year": 2017,
+        "championId": "mark-tannahill",
+        "runnerUpId": "rob-bowlby"
+      },
+      {
+        "year": 2018,
+        "championId": "greg-wylie",
+        "runnerUpId": "matt-sullivan"
+      },
+      {
+        "year": 2019,
+        "championId": "kevin-bayly",
+        "runnerUpId": "adam-wolski"
+      },
+      {
+        "year": 2020,
+        "championId": "matt-sullivan",
+        "runnerUpId": "greg-wylie"
+      },
+      {
+        "year": 2021,
+        "championId": "adam-wolski",
+        "runnerUpId": "mark-tannahill"
+      },
+      {
+        "year": 2022,
+        "championId": "paul-sullivan",
+        "runnerUpId": "matt-sullivan"
+      },
+      {
+        "year": 2023,
+        "championId": "matt-shaffer",
+        "runnerUpId": "robert-seymore-jr"
+      },
+      {
+        "year": 2024,
+        "championId": "matt-shaffer",
+        "runnerUpId": "adam-wolski"
+      },
+      {
+        "year": 2025,
+        "championId": "adam-wolski",
+        "runnerUpId": "paul-sullivan"
+      }
+    ],
+    "football3": [
+      {
+        "year": 2012,
+        "championId": "matt-shaffer",
+        "runnerUpId": "rosada-plummer"
+      },
+      {
+        "year": 2013,
+        "championId": "romina-papa",
+        "runnerUpId": "matt-shaffer"
+      },
+      {
+        "year": 2014,
+        "championId": "rosada-plummer",
+        "runnerUpId": "dave-beck"
+      },
+      {
+        "year": 2015,
+        "championId": "matt-sullivan",
+        "runnerUpId": "dave-beck"
+      },
+      {
+        "year": 2016,
+        "championId": "andrew-shaffer",
+        "runnerUpId": "dave-beck"
+      },
+      {
+        "year": 2017,
+        "championId": "noah-shaffer",
+        "runnerUpId": "rosada-plummer"
+      },
+      {
+        "year": 2018,
+        "championId": "matt-shaffer",
+        "runnerUpId": "romina-papa"
+      },
+      {
+        "year": 2019,
+        "championId": "andrew-shaffer",
+        "runnerUpId": "matt-shaffer"
+      },
+      {
+        "year": 2020,
+        "championId": "rosada-plummer",
+        "runnerUpId": "romina-papa"
+      },
+      {
+        "year": 2021,
+        "championId": "romina-papa",
+        "runnerUpId": "dan-plummer"
+      },
+      {
+        "year": 2022,
+        "championId": "rosada-plummer",
+        "runnerUpId": "noah-shaffer"
+      },
+      {
+        "year": 2023,
+        "championId": "matt-shaffer",
+        "runnerUpId": "andrew-shaffer"
+      },
+      {
+        "year": 2024,
+        "championId": "andrew-shaffer",
+        "runnerUpId": "mitchell-sullivan"
+      },
+      {
+        "year": 2025,
+        "championId": "andrew-shaffer",
+        "runnerUpId": "dave-beck"
+      }
+    ],
+    "baseball": [
+      {
+        "year": 2009,
+        "championId": "matt-shaffer",
+        "runnerUpId": "rob-seymore-sr"
+      },
+      {
+        "year": 2010,
+        "championId": "rob-seymore-sr",
+        "runnerUpId": "adam-wolski"
+      },
+      {
+        "year": 2011,
+        "championId": "rob-seymore-sr",
+        "runnerUpId": "cade-gallegos"
+      },
+      {
+        "year": 2012,
+        "championId": "cade-gallegos",
+        "runnerUpId": "matt-shaffer"
+      },
+      {
+        "year": 2013,
+        "championId": "adam-wolski",
+        "runnerUpId": "matt-shaffer"
+      },
+      {
+        "year": 2014,
+        "championId": "mark-tannahill",
+        "runnerUpId": "adam-wolski"
+      },
+      {
+        "year": 2015,
+        "championId": "matt-shaffer",
+        "runnerUpId": "greg-wylie"
+      },
+      {
+        "year": 2016,
+        "championId": "adam-wolski",
+        "runnerUpId": "kevin-bayly"
+      },
+      {
+        "year": 2017,
+        "championId": "drew-bayly",
+        "runnerUpId": "brian-damiani"
+      },
+      {
+        "year": 2018,
+        "championId": "adam-wolski",
+        "runnerUpId": "kevin-bayly"
+      },
+      {
+        "year": 2019,
+        "championId": "adam-wolski",
+        "runnerUpId": "kevin-bayly"
+      },
+      {
+        "year": 2021,
+        "championId": "adam-wolski",
+        "runnerUpId": "drew-bayly"
+      },
+      {
+        "year": 2022,
+        "championId": "aitor-de-legarra",
+        "runnerUpId": "drew-bayly"
+      },
+      {
+        "year": 2023,
+        "championId": "matt-shaffer",
+        "runnerUpId": "aitor-de-legarra"
+      },
+      {
+        "year": 2024,
+        "championId": "adam-wolski",
+        "runnerUpId": "diego-papa"
+      },
+      {
+        "year": 2025,
+        "championId": "matt-shaffer",
+        "runnerUpId": "kevin-bayly"
+      }
+    ]
+  },
+  "records": {
+    "work": {
+      "highestScore": {
+        "manager": "kyle-moyles",
+        "score": 343.62,
+        "opponent": "josh-batacan",
+        "oppScore": 156.5,
+        "year": 2024,
+        "week": 16
+      },
+      "lowestScore": {
+        "manager": "james-jones",
+        "score": 58.28,
+        "opponent": "jessie-qutami",
+        "oppScore": 187.2,
+        "year": 2024,
+        "week": 11
+      },
+      "biggestBlowout": {
+        "winner": "kyle-moyles",
+        "winnerScore": 343.62,
+        "loser": "josh-batacan",
+        "loserScore": 156.5,
+        "margin": 187.12,
+        "year": 2024,
+        "week": 16
+      },
+      "closestGame": {
+        "winner": "matt-shaffer",
+        "winnerScore": 133.06,
+        "loser": "josh-batacan",
+        "loserScore": 132.92,
+        "margin": 0.14,
+        "year": 2025,
+        "week": 4
+      },
+      "longestWinStreak": {
+        "manager": "romina-papa",
+        "length": 16,
+        "range": [
+          [
+            2024,
+            1
+          ],
+          [
+            2025,
+            1
+          ]
+        ]
+      },
+      "longestLossStreak": {
+        "manager": "josh-batacan",
+        "length": 10,
+        "range": [
+          [
+            2024,
+            13
+          ],
+          [
+            2025,
+            6
+          ]
+        ]
+      },
+      "hottestCurrentStreak": {
+        "manager": "romina-papa",
+        "type": "W",
+        "length": 5,
+        "lastYear": 2025,
+        "lastWeek": 16
+      },
+      "coldestCurrentStreak": {
+        "manager": "jason-whalley",
+        "type": "L",
+        "length": 5,
+        "lastYear": 2025,
+        "lastWeek": 16
+      },
+      "bestNeverWon": {
+        "manager": "matt-shaffer",
+        "wins": 18,
+        "losses": 8,
+        "ties": 0,
+        "winPct": 0.6923076923076923
+      },
+      "longestDrought": {
+        "manager": "matt-shaffer",
+        "drought": 1,
+        "everWon": false
+      }
+    },
+    "football2": {
+      "highestScore": {
+        "manager": "rob-bowlby",
+        "score": 179.44,
+        "opponent": "mark-tannahill",
+        "oppScore": 81.72,
+        "year": 2021,
+        "week": 2
+      },
+      "lowestScore": {
+        "manager": "joanna-sullivan",
+        "score": 27.3,
+        "opponent": "kevin-bayly",
+        "oppScore": 94.18,
+        "year": 2020,
+        "week": 13
+      },
+      "biggestBlowout": {
+        "winner": "greg-wylie",
+        "winnerScore": 173.2,
+        "loser": "robert-seymore-jr",
+        "loserScore": 61.88,
+        "margin": 111.32,
+        "year": 2025,
+        "week": 8
+      },
+      "closestGame": {
+        "winner": "paul-sullivan",
+        "winnerScore": 83.96,
+        "loser": "matt-sullivan",
+        "loserScore": 83.9,
+        "margin": 0.06,
+        "year": 2015,
+        "week": 17
+      },
+      "longestWinStreak": {
+        "manager": "matt-shaffer",
+        "length": 21,
+        "range": [
+          [
+            2023,
+            4
+          ],
+          [
+            2024,
+            6
+          ]
+        ]
+      },
+      "longestLossStreak": {
+        "manager": "rob-bowlby",
+        "length": 8,
+        "range": [
+          [
+            2024,
+            14
+          ],
+          [
+            2025,
+            3
+          ]
+        ]
+      },
+      "hottestCurrentStreak": {
+        "manager": "rob-bowlby",
+        "type": "W",
+        "length": 3,
+        "lastYear": 2025,
+        "lastWeek": 18
+      },
+      "coldestCurrentStreak": {
+        "manager": "robert-seymore-jr",
+        "type": "L",
+        "length": 8,
+        "lastYear": 2025,
+        "lastWeek": 18
+      },
+      "bestNeverWon": {
+        "manager": "jon-sullivan",
+        "wins": 58,
+        "losses": 61,
+        "ties": 0,
+        "winPct": 0.48739495798319327
+      },
+      "longestDrought": {
+        "manager": "rob-bowlby",
+        "drought": 12,
+        "everWon": false
+      }
+    },
+    "football3": {
+      "highestScore": {
+        "manager": "andrew-shaffer",
+        "score": 332.06,
+        "opponent": "romina-papa",
+        "oppScore": 274.24,
+        "year": 2020,
+        "week": 16
+      },
+      "lowestScore": {
+        "manager": "rosada-plummer",
+        "score": 36.4,
+        "opponent": "kelly-mcclean",
+        "oppScore": 73.1,
+        "year": 2015,
+        "week": 5
+      },
+      "biggestBlowout": {
+        "winner": "matt-sullivan",
+        "winnerScore": 200.3,
+        "loser": "benjamin-peterson",
+        "loserScore": 66.2,
+        "margin": 134.1,
+        "year": 2012,
+        "week": 9
+      },
+      "closestGame": {
+        "winner": "noah-shaffer",
+        "winnerScore": 87.6,
+        "loser": "kelly-mcclean",
+        "loserScore": 109.5,
+        "margin": -21.9,
+        "year": 2015,
+        "week": 17
+      },
+      "longestWinStreak": {
+        "manager": "matt-shaffer",
+        "length": 14,
+        "range": [
+          [
+            2012,
+            9
+          ],
+          [
+            2013,
+            7
+          ]
+        ]
+      },
+      "longestLossStreak": {
+        "manager": "joanna-sullivan",
+        "length": 17,
+        "range": [
+          [
+            2014,
+            12
+          ],
+          [
+            2015,
+            15
+          ]
+        ]
+      },
+      "hottestCurrentStreak": {
+        "manager": "andrew-shaffer",
+        "type": "W",
+        "length": 3,
+        "lastYear": 2025,
+        "lastWeek": 15
+      },
+      "coldestCurrentStreak": {
+        "manager": "noah-shaffer",
+        "type": "L",
+        "length": 3,
+        "lastYear": 2025,
+        "lastWeek": 15
+      },
+      "bestNeverWon": {
+        "manager": "dave-beck",
+        "wins": 118,
+        "losses": 89,
+        "ties": 0,
+        "winPct": 0.5700483091787439
+      },
+      "longestDrought": {
+        "manager": "tammy-carlson",
+        "drought": 13,
+        "everWon": false
+      }
+    },
+    "baseball": {
+      "bestNeverWon": {
+        "manager": "matt-sullivan",
+        "wins": 304,
+        "losses": 282,
+        "ties": 30,
+        "winPct": 0.5178571428571429
+      },
+      "longestDrought": {
+        "manager": "kevin-bayly",
+        "drought": 16,
+        "everWon": false
+      }
+    }
+  },
+  "trades": {
+    "work": [
+      {
+        "season": 2024,
+        "week": 6,
+        "timestamp": "2024-10-09T23:38:59.105Z",
+        "teamA": "james-jones",
+        "teamAName": "Bed, Bath and Bijan",
+        "teamB": "josh-batacan",
+        "teamBName": "Straight Outta Oakland",
+        "receivedA": [
+          {
+            "player": "Sam LaPorta",
+            "position": "TE"
+          },
+          {
+            "player": "Wan'Dale Robinson",
+            "position": "WR"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "David Montgomery",
+            "position": "RB"
+          }
+        ],
+        "dropped": []
+      },
+      {
+        "season": 2024,
+        "week": 7,
+        "timestamp": "2024-10-18T20:17:52.975Z",
+        "teamA": "jacob-mccluskey",
+        "teamAName": "Dude, Where's Lamar?",
+        "teamB": "matt-shaffer",
+        "teamBName": "Obi-Pat Mahomesie",
+        "receivedA": [
+          {
+            "player": "James Conner",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Lamar Jackson",
+            "position": "QB"
+          }
+        ],
+        "dropped": []
+      },
+      {
+        "season": 2025,
+        "week": 1,
+        "timestamp": "2025-09-03T18:31:58.018Z",
+        "teamA": "josh-steckler",
+        "teamAName": "Commitment to Mediocrity",
+        "teamB": "jacob-mccluskey",
+        "teamBName": "Bald By Choice",
+        "receivedA": [
+          {
+            "player": "Matthew Golden",
+            "position": "WR"
+          },
+          {
+            "player": "J.K. Dobbins",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "David Montgomery",
+            "position": "RB"
+          }
+        ],
+        "dropped": []
+      },
+      {
+        "season": 2025,
+        "week": 3,
+        "timestamp": "2025-09-18T02:25:32.105Z",
+        "teamA": "jason-whalley",
+        "teamAName": "WallesWorld",
+        "teamB": "james-jones",
+        "teamBName": "Where's your HALL Pass?",
+        "receivedA": [
+          {
+            "player": "George Kittle",
+            "position": "TE"
+          },
+          {
+            "player": "Aaron Jones",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Javonte Williams",
+            "position": "RB"
+          }
+        ],
+        "dropped": []
+      }
+    ],
+    "football2": [
+      {
+        "season": 2018,
+        "week": 10,
+        "timestamp": "2018-11-02T18:34:26.690Z",
+        "teamA": "greg-wylie",
+        "teamAName": "beats by kareem",
+        "teamB": "joanna-sullivan",
+        "teamBName": "Hoho's Beast Mode",
+        "receivedA": [
+          {
+            "player": "A.J. Green",
+            "position": "WR"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Phillip Lindsay",
+            "position": "RB"
+          },
+          {
+            "player": "Calvin Ridley",
+            "position": "WR"
+          }
+        ],
+        "dropped": [
+          {
+            "player": "Marshawn Lynch",
+            "position": "RB",
+            "from": "Joanna Sullivan"
+          }
+        ]
+      },
+      {
+        "season": 2020,
+        "week": 9,
+        "timestamp": null,
+        "teamA": "greg-wylie",
+        "teamAName": "Telvin Coleman Turkey Mayo",
+        "teamB": "robert-seymore-jr",
+        "teamBName": "Team Seymore",
+        "receivedA": [
+          {
+            "player": "Tyler Lockett",
+            "position": "WR"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Todd Gurley",
+            "position": "RB"
+          }
+        ],
+        "dropped": []
+      }
+    ],
+    "football3": [
+      {
+        "season": 2020,
+        "week": 12,
+        "timestamp": null,
+        "teamA": "dan-plummer",
+        "teamAName": "Me and My Mahomey",
+        "teamB": "matt-sullivan",
+        "teamBName": "Judge Jeudy",
+        "receivedA": [
+          {
+            "player": "Tua Tagovailoa",
+            "position": "QB"
+          },
+          {
+            "player": "Clyde Edwards-Helaire",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "CeeDee Lamb",
+            "position": "WR"
+          },
+          {
+            "player": "Ben Roethlisberger",
+            "position": "QB"
+          }
+        ],
+        "dropped": []
+      },
+      {
+        "season": 2024,
+        "week": 7,
+        "timestamp": "2024-10-19T14:45:03.503Z",
+        "teamA": "matt-shaffer",
+        "teamAName": "Jonathan (Taylor's Version)",
+        "teamB": "romina-papa",
+        "teamBName": "Purdy in the USA",
+        "receivedA": [
+          {
+            "player": "Diontae Johnson",
+            "position": "WR"
+          },
+          {
+            "player": "Jonathan Taylor",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Rhamondre Stevenson",
+            "position": "RB"
+          },
+          {
+            "player": "Garrett Wilson",
+            "position": "WR"
+          }
+        ],
+        "dropped": [
+          {
+            "player": "Darius Slayton",
+            "position": "WR",
+            "from": "Matt Shaffer"
+          }
+        ]
+      },
+      {
+        "season": 2025,
+        "week": 4,
+        "timestamp": "2025-09-27T19:16:24.043Z",
+        "teamA": "romina-papa",
+        "teamAName": "Benches R'Us",
+        "teamB": "diego-papa",
+        "teamBName": "San Jose  Churros",
+        "receivedA": [
+          {
+            "player": "David Montgomery",
+            "position": "RB"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Deebo Samuel",
+            "position": "WR"
+          }
+        ],
+        "dropped": []
+      },
+      {
+        "season": 2025,
+        "week": 7,
+        "timestamp": "2025-10-19T01:33:03.992Z",
+        "teamA": "romina-papa",
+        "teamAName": "Benches R'Us",
+        "teamB": "matt-shaffer",
+        "teamBName": "We Built This Griddy",
+        "receivedA": [
+          {
+            "player": "Quentin Johnston",
+            "position": "WR"
+          },
+          {
+            "player": "Jake Ferguson",
+            "position": "TE"
+          }
+        ],
+        "receivedB": [
+          {
+            "player": "Brian Thomas Jr.",
+            "position": "WR"
+          }
+        ],
+        "dropped": []
+      }
+    ]
+  }
 };
 
 const ALL_EXHIBITS = [...DATA.leagues, DATA.master];
@@ -3445,12 +4243,12 @@ function managersForExhibit(exhibitId) {
    SMALL UI PIECES
    ========================================================= */
 function TrophyCount({ count }) {
-  if (count <= 0) return <span className="text-amber-100/30">—</span>;
+  if (count <= 0) return <span className="text-slate-300">—</span>;
   const shown = Math.min(count, 5);
   return (
     <span className="whitespace-nowrap">
       <span>{'🏆'.repeat(shown)}</span>
-      {count > 5 && <span className="text-amber-300 ml-1">x{count}</span>}
+      {count > 5 && <span className="text-amber-600 font-semibold ml-1">x{count}</span>}
     </span>
   );
 }
@@ -3458,7 +4256,7 @@ function RankBadge({ rank }) {
   if (rank === 1) return <span title="Hall of Fame Inductee" className="text-lg">👑</span>;
   if (rank === 2) return <span className="text-lg">🥈</span>;
   if (rank === 3) return <span className="text-lg">🥉</span>;
-  return <span className="text-amber-100/50">#{rank}</span>;
+  return <span className="text-slate-400">#{rank}</span>;
 }
 function Badge({ children, className }) {
   return (
@@ -3487,12 +4285,12 @@ function PinModal({ exhibit, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
-      <div className="w-full max-w-sm plaque-texture border border-amber-400/40 rounded-lg shadow-gold-glow-lg p-6 relative">
-        <button onClick={onClose} className="absolute top-3 right-3 text-amber-200/50 hover:text-amber-200 text-xl leading-none">×</button>
+      <div className="w-full max-w-sm plaque-texture border border-sky-200 rounded-lg shadow-gold-glow-lg p-6 relative">
+        <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
         <div className="text-center mb-5">
           <div className="text-3xl mb-2">🔒</div>
-          <h2 className="font-serif text-xl text-amber-200 tracking-wide">Enter Vault Access Code</h2>
-          <p className="text-amber-100/50 text-sm mt-1">{exhibit.name}</p>
+          <h2 className="font-serif text-xl text-slate-800 tracking-wide">Enter Vault Access Code</h2>
+          <p className="text-slate-500 text-sm mt-1">{exhibit.name}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           <input
@@ -3502,14 +4300,14 @@ function PinModal({ exhibit, onClose, onSuccess }) {
             maxLength="4"
             value={value}
             onChange={e => { setValue(e.target.value.replace(/\D/g, '')); setError(''); }}
-            className="w-full text-center tracking-[1em] text-2xl bg-black/50 border border-amber-400/40 rounded-md py-3 text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+            className="w-full text-center tracking-[1em] text-2xl bg-sky-50 border border-sky-200 rounded-md py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
             placeholder="••••"
           />
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           <button
             type="submit"
             disabled={value.length !== 4}
-            className="w-full bg-gradient-to-b from-amber-400 to-amber-600 disabled:opacity-30 disabled:cursor-not-allowed text-obsidian font-serif font-bold py-2.5 rounded-md tracking-wide hover:brightness-110 transition"
+            className="w-full bg-gradient-to-b from-amber-400 to-amber-600 disabled:opacity-30 disabled:cursor-not-allowed text-white font-serif font-bold py-2.5 rounded-md tracking-wide hover:brightness-105 shadow-sm transition"
           >
             Unlock Exhibit
           </button>
@@ -3530,7 +4328,7 @@ function Lobby({ unlocked, onSelect }) {
         <h1 className="font-serif text-4xl md:text-5xl gold-shimmer-text font-bold tracking-wide">
           Fantasy Sports Hall of Fame & Museum
         </h1>
-        <p className="text-amber-100/40 mt-3 tracking-wide uppercase text-xs">Est. — where legends are enshrined and rivalries are immortalized</p>
+        <p className="text-slate-400 mt-3 tracking-wide uppercase text-xs">Est. — where legends are enshrined and rivalries are immortalized</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -3544,20 +4342,20 @@ function Lobby({ unlocked, onSelect }) {
               className={
                 "vault-card text-left plaque-texture border rounded-lg p-6 relative overflow-hidden " +
                 (isMaster
-                  ? "border-amber-300/60 shadow-gold-glow-lg md:col-span-1 "
-                  : "border-amber-400/25 shadow-gold-glow ") +
-                "hover:border-amber-300/70"
+                  ? "border-amber-300 shadow-gold-glow-lg md:col-span-1 "
+                  : "border-sky-200 shadow-gold-glow ") +
+                "hover:border-sky-400"
               }
             >
               <div className="flex items-start justify-between mb-6">
                 <span className="text-3xl">{isMaster ? '👑' : (ex.sport === 'Baseball' ? '⚾' : '🏈')}</span>
-                {done && <Badge className="border-emerald-400/40 text-emerald-300 bg-emerald-400/10">Unlocked</Badge>}
+                {done && <Badge className="border-emerald-300 text-emerald-700 bg-emerald-50">Unlocked</Badge>}
               </div>
-              <h3 className="font-serif text-lg text-amber-100 mb-1">{ex.name}</h3>
-              <p className="text-amber-100/40 text-xs mb-6">
+              <h3 className="font-serif text-lg text-slate-800 mb-1">{ex.name}</h3>
+              <p className="text-slate-400 text-xs mb-6">
                 {isMaster ? 'Master VIP Key — unlocks every exhibit' : ex.sport}
               </p>
-              <div className="flex items-center gap-2 text-amber-300/70 text-sm">
+              <div className="flex items-center gap-2 text-sky-600 text-sm font-medium">
                 <span>{done ? 'Enter Exhibit' : 'Enter Vault Access Code'}</span>
                 <span>→</span>
               </div>
@@ -3577,7 +4375,7 @@ function StandingsTable({ rows, onSelectManager, showPlayoff }) {
   const [sortDir, setSortDir] = useState('desc');
 
   if (rows.length === 0) {
-    return <p className="text-amber-100/40 text-center py-10 italic">No managers to display for this filter.</p>;
+    return <p className="text-slate-400 text-center py-10 italic">No managers to display for this filter.</p>;
   }
 
   const columns = [
@@ -3614,43 +4412,43 @@ function StandingsTable({ rows, onSelectManager, showPlayoff }) {
     : rows; // default: original rank order
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-amber-400/20 shadow-gold-glow">
+    <div className="overflow-x-auto rounded-lg border border-sky-100 shadow-gold-glow bg-white">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="bg-black/40 text-amber-300/70 uppercase text-[11px] tracking-wider">
+          <tr className="bg-sky-50 text-sky-700 uppercase text-[11px] tracking-wider">
             {columns.map(col => (
               <th
                 key={col.key}
                 onClick={() => handleSort(col)}
-                className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap cursor-pointer select-none hover:text-amber-100 transition"
+                className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap cursor-pointer select-none hover:text-sky-900 transition"
                 title="Click to sort"
               >
                 {col.label}
-                {sortKey === col.key && <span className="ml-1 text-amber-400">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                {sortKey === col.key && <span className="ml-1 text-sky-500">{sortDir === 'asc' ? '▲' : '▼'}</span>}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {displayRows.map(r => (
-            <tr key={r.managerId} className="border-t border-amber-400/10 hover:bg-amber-400/5 transition">
+            <tr key={r.managerId} className="border-t border-slate-100 hover:bg-sky-50/60 transition">
               <td className="px-4 py-3"><RankBadge rank={r.rank} /></td>
               <td className="px-4 py-3">
-                <button onClick={() => onSelectManager(r.managerId)} className="font-serif text-amber-100 hover:text-amber-300 hover:underline decoration-amber-400/50 underline-offset-4 text-left">
+                <button onClick={() => onSelectManager(r.managerId)} className="font-serif text-slate-800 hover:text-sky-600 hover:underline decoration-sky-400 underline-offset-4 text-left">
                   {r.name}
                 </button>
                 <div className="flex gap-1 mt-1">
-                  {r.rank === 1 && <Badge className="border-amber-300/50 text-amber-200 bg-amber-400/10">HOF Inductee</Badge>}
-                  {r.isDualThreat && <Badge className="border-fuchsia-300/40 text-fuchsia-200 bg-fuchsia-400/10">Dual-Threat</Badge>}
-                  {!r.active && <Badge className="border-amber-100/20 text-amber-100/40 bg-white/5">Alumni</Badge>}
+                  {r.rank === 1 && <Badge className="border-amber-300 text-amber-700 bg-amber-50">HOF Inductee</Badge>}
+                  {r.isDualThreat && <Badge className="border-fuchsia-300 text-fuchsia-700 bg-fuchsia-50">Dual-Threat</Badge>}
+                  {!r.active && <Badge className="border-slate-200 text-slate-400 bg-slate-50">Alumni</Badge>}
                 </div>
               </td>
               <td className="px-4 py-3"><TrophyCount count={r.championships} /></td>
-              <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.wins}-{r.losses}-{r.ties}</td>
-              <td className="px-4 py-3 text-amber-200 font-semibold">{pct(r.winPct)}</td>
-              {showPlayoff && <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.playoffWins}-{r.playoffLosses}</td>}
-              {showPlayoff && <td className="px-4 py-3 text-amber-100/80">{pct(r.playoffWinPct)}</td>}
-              <td className="px-4 py-3 text-amber-100/80">{r.seasonsActive}</td>
+              <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.wins}-{r.losses}-{r.ties}</td>
+              <td className="px-4 py-3 text-sky-700 font-semibold">{pct(r.winPct)}</td>
+              {showPlayoff && <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.playoffWins}-{r.playoffLosses}</td>}
+              {showPlayoff && <td className="px-4 py-3 text-slate-600">{pct(r.playoffWinPct)}</td>}
+              <td className="px-4 py-3 text-slate-600">{r.seasonsActive}</td>
             </tr>
           ))}
         </tbody>
@@ -3684,7 +4482,7 @@ function RivalryTool({ managers }) {
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-black/50 border border-amber-400/30 rounded-md px-3 py-2 text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+        className="w-full bg-white border border-sky-200 rounded-md px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
       >
         <option value="">Select manager…</option>
         {managers.filter(m => m.id !== exclude).map(m => (
@@ -3696,42 +4494,42 @@ function RivalryTool({ managers }) {
 
   return (
     <div className="mt-10">
-      <h3 className="font-serif text-xl text-amber-200 mb-4 flex items-center gap-2">⚔️ Head-to-Head Rivalry Comparison</h3>
+      <h3 className="font-serif text-xl text-slate-800 mb-4 flex items-center gap-2">⚔️ Head-to-Head Rivalry Comparison</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-xl">
         <Select value={aId} onChange={setAId} exclude={bId} />
         <Select value={bId} onChange={setBId} exclude={aId} />
       </div>
 
-      {(!aId || !bId) && <p className="text-amber-100/40 italic text-sm">Select two managers to compare their rivalry.</p>}
-      {aId && bId && aId === bId && <p className="text-red-400 text-sm">Choose two different managers.</p>}
+      {(!aId || !bId) && <p className="text-slate-400 italic text-sm">Select two managers to compare their rivalry.</p>}
+      {aId && bId && aId === bId && <p className="text-red-500 text-sm">Choose two different managers.</p>}
 
       {validPair && (
         <div className="mb-8">
-          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-3">Career Comparison — All Sports</p>
+          <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-3">Career Comparison — All Sports</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
             {[mA, mB].map((m, i) => {
               const totals = careerTotals(m.id);
               const gp = totals.wins + totals.losses + totals.ties;
               const wp = gp ? (totals.wins + 0.5 * totals.ties) / gp : 0;
               return (
-                <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
-                  <h4 className="font-serif text-lg text-amber-100 mb-3">{m.name}</h4>
+                <div key={i} className="plaque-texture border border-sky-100 rounded-lg p-5 shadow-gold-glow">
+                  <h4 className="font-serif text-lg text-slate-800 mb-3">{m.name}</h4>
                   <dl className="space-y-2 text-sm">
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Championships (All Leagues)</dt><dd className="text-amber-200 font-semibold"><TrophyCount count={totals.championships} /></dd></div>
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Career Record (All Leagues)</dt><dd className="text-amber-200 font-semibold">{totals.wins}-{totals.losses}-{totals.ties}</dd></div>
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Career Win %</dt><dd className="text-amber-200 font-semibold">{pct(wp)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Championships (All Leagues)</dt><dd className="text-sky-700 font-semibold"><TrophyCount count={totals.championships} /></dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Career Record (All Leagues)</dt><dd className="text-sky-700 font-semibold">{totals.wins}-{totals.losses}-{totals.ties}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Career Win %</dt><dd className="text-sky-700 font-semibold">{pct(wp)}</dd></div>
                   </dl>
                 </div>
               );
             })}
           </div>
-          <p className="text-amber-100/30 text-xs mt-3 italic">Combines every league each manager plays in, including baseball — which has no game-by-game head-to-head log, so it's reflected here as career totals rather than direct matchups.</p>
+          <p className="text-slate-400 text-xs mt-3 italic">Combines every league each manager plays in, including baseball — which has no game-by-game head-to-head log, so it's reflected here as career totals rather than direct matchups.</p>
         </div>
       )}
 
       {h2h && (
         <div>
-          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-3">Direct Head-to-Head — Football</p>
+          <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-3">Direct Head-to-Head — Football</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
             {[
               { m: mA, wins: h2h.aWins, losses: h2h.bWins, pw: h2h.aPlayoffWins, pl: h2h.bPlayoffWins, pts: h2h.aPoints },
@@ -3740,13 +4538,13 @@ function RivalryTool({ managers }) {
               const total = side.wins + side.losses;
               const winPct = total ? side.wins / total : 0;
               return (
-                <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
-                  <h4 className="font-serif text-lg text-amber-100 mb-3">{side.m.name}</h4>
+                <div key={i} className="plaque-texture border border-sky-100 rounded-lg p-5 shadow-gold-glow">
+                  <h4 className="font-serif text-lg text-slate-800 mb-3">{side.m.name}</h4>
                   <dl className="space-y-2 text-sm">
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Overall H2H Record</dt><dd className="text-amber-200 font-semibold">{side.wins}-{side.losses}</dd></div>
-                    <div className="flex justify-between"><dt className="text-amber-100/50">H2H Win %</dt><dd className="text-amber-200 font-semibold">{pct(winPct)}</dd></div>
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Playoff H2H</dt><dd className="text-amber-200 font-semibold">{side.pw}-{side.pl}</dd></div>
-                    <div className="flex justify-between"><dt className="text-amber-100/50">Total Points Scored</dt><dd className="text-amber-200 font-semibold">{side.pts.toLocaleString()}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Overall H2H Record</dt><dd className="text-sky-700 font-semibold">{side.wins}-{side.losses}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">H2H Win %</dt><dd className="text-sky-700 font-semibold">{pct(winPct)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Playoff H2H</dt><dd className="text-sky-700 font-semibold">{side.pw}-{side.pl}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">Total Points Scored</dt><dd className="text-sky-700 font-semibold">{side.pts.toLocaleString()}</dd></div>
                   </dl>
                 </div>
               );
@@ -3755,8 +4553,122 @@ function RivalryTool({ managers }) {
         </div>
       )}
       {aId && bId && aId !== bId && !h2h && (
-        <p className="text-amber-100/40 italic text-sm">These managers have never faced each other in a football matchup.</p>
+        <p className="text-slate-400 italic text-sm">These managers have never faced each other in a football matchup.</p>
       )}
+    </div>
+  );
+}
+
+/* =========================================================
+   TRADE BLOCK
+   ========================================================= */
+function TradeBlock({ exhibitId }) {
+  const trades = (DATA.trades && DATA.trades[exhibitId]) || [];
+  if (trades.length === 0) return null;
+  const nm = id => (getManager(id) ? getManager(id).name : 'Unknown');
+
+  return (
+    <div className="mt-10">
+      <h3 className="font-serif text-xl text-slate-800 mb-1 flex items-center gap-2">🔄 Trade Block</h3>
+      <p className="text-slate-400 text-sm mb-6">Every trade in league history — {trades.length} total.</p>
+      <div className="space-y-4">
+        {trades.slice().reverse().map((t, i) => (
+          <div key={i} className="plaque-texture border border-sky-100 rounded-lg p-5 shadow-gold-glow">
+            <p className="text-slate-400 text-xs uppercase tracking-wide mb-3">{t.season}, Week {t.week}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="font-serif text-slate-800 mb-1">{nm(t.teamA)}</p>
+                <p className="text-slate-400 text-xs mb-2">{t.teamAName}</p>
+                <p className="text-sky-700 text-sm font-medium mb-1">Received:</p>
+                <ul className="text-slate-600 text-sm space-y-0.5">
+                  {t.receivedA.map((p, j) => <li key={j}>{p.player} <span className="text-slate-400">({p.position})</span></li>)}
+                  {t.receivedA.length === 0 && <li className="text-slate-300 italic">Nothing (players only)</li>}
+                </ul>
+              </div>
+              <div>
+                <p className="font-serif text-slate-800 mb-1">{nm(t.teamB)}</p>
+                <p className="text-slate-400 text-xs mb-2">{t.teamBName}</p>
+                <p className="text-sky-700 text-sm font-medium mb-1">Received:</p>
+                <ul className="text-slate-600 text-sm space-y-0.5">
+                  {t.receivedB.map((p, j) => <li key={j}>{p.player} <span className="text-slate-400">({p.position})</span></li>)}
+                  {t.receivedB.length === 0 && <li className="text-slate-300 italic">Nothing (players only)</li>}
+                </ul>
+              </div>
+            </div>
+            {t.dropped && t.dropped.length > 0 && (
+              <p className="text-slate-400 text-xs mt-3 italic">
+                Also cut as part of the deal: {t.dropped.map((p, j) => `${p.player} (from ${p.from})`).join(', ')}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   LEAGUE TIMELINE
+   ========================================================= */
+function LeagueTimeline({ exhibitId }) {
+  const entries = (DATA.history && DATA.history[exhibitId]) || [];
+  if (entries.length === 0) return null;
+
+  // walk oldest -> newest, tracking each champion's title count so far
+  const titleCounts = {};
+  const withMeta = entries.map(e => {
+    titleCounts[e.championId] = (titleCounts[e.championId] || 0) + 1;
+    const n = titleCounts[e.championId];
+    let flavor = null;
+    if (n === 1) flavor = 'First Title';
+    else if (n === 2) flavor = 'Back-to-Back?';
+    else flavor = `${n}${n === 3 ? 'rd' : 'th'} Title`;
+    return { ...e, titleNumber: n, flavor };
+  });
+
+  // detect true back-to-back (same champion as immediately preceding season)
+  withMeta.forEach((e, i) => {
+    if (i > 0 && withMeta[i - 1].championId === e.championId) {
+      e.flavor = 'Back-to-Back Champion';
+    } else if (e.titleNumber === 2) {
+      e.flavor = '2nd Title';
+    }
+  });
+
+  return (
+    <div className="mt-12">
+      <h3 className="font-serif text-xl text-slate-800 mb-1 flex items-center gap-2">🏛️ League Timeline</h3>
+      <p className="text-slate-400 text-sm mb-6">Every champion in league history, walked season by season.</p>
+      <div className="relative pl-8">
+        <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-sky-100" />
+        <div className="space-y-6">
+          {withMeta.slice().reverse().map(e => {
+            const champ = getManager(e.championId);
+            const runner = e.runnerUpId ? getManager(e.runnerUpId) : null;
+            return (
+              <div key={e.year} className="relative">
+                <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-white border-2 border-amber-400 flex items-center justify-center text-xs">
+                  🏆
+                </div>
+                <div className="plaque-texture border border-sky-100 rounded-lg p-4 shadow-gold-glow">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="font-serif text-lg text-slate-800">{e.year}</span>
+                    {e.flavor && (
+                      <Badge className="border-amber-300 text-amber-700 bg-amber-50">{e.flavor}</Badge>
+                    )}
+                  </div>
+                  <p className="mt-2 text-slate-700">
+                    <span className="text-amber-600 font-semibold">👑 {champ ? champ.name : 'Unknown'}</span>
+                  </p>
+                  {runner && (
+                    <p className="text-slate-400 text-sm mt-1">Runner-up: {runner.name}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3775,51 +4687,157 @@ function ManagerPlaqueModal({ managerId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
-      <div className="w-full max-w-lg plaque-texture border-2 border-amber-400/50 rounded-lg shadow-gold-glow-lg p-7 relative max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-3 right-3 text-amber-200/50 hover:text-amber-200 text-xl leading-none">×</button>
+      <div className="w-full max-w-lg plaque-texture border-2 border-amber-300 rounded-lg shadow-gold-glow-lg p-7 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
 
-        <div className="text-center mb-6 border-b border-amber-400/20 pb-6">
+        <div className="text-center mb-6 border-b border-sky-100 pb-6">
           <div className="text-3xl mb-2">🏅</div>
-          <h2 className="font-serif text-2xl text-amber-100">{m.name}</h2>
-          <p className="text-amber-100/40 text-xs mt-1 uppercase tracking-wide">{leagueNames.join(' · ')}</p>
+          <h2 className="font-serif text-2xl text-slate-800">{m.name}</h2>
+          <p className="text-slate-400 text-xs mt-1 uppercase tracking-wide">{leagueNames.join(' · ')}</p>
           <div className="flex justify-center gap-2 mt-3">
-            {dual && <Badge className="border-fuchsia-300/40 text-fuchsia-200 bg-fuchsia-400/10">Dual-Threat</Badge>}
-            <Badge className="border-amber-300/50 text-amber-200 bg-amber-400/10"><TrophyCount count={totalChampionships} /> Titles</Badge>
+            {dual && <Badge className="border-fuchsia-300 text-fuchsia-700 bg-fuchsia-50">Dual-Threat</Badge>}
+            <Badge className="border-amber-300 text-amber-700 bg-amber-50"><TrophyCount count={totalChampionships} /> Titles</Badge>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-black/30 border border-amber-400/20 rounded-md p-4">
-            <p className="text-amber-100/40 text-[11px] uppercase tracking-wide mb-1">Best Single Season</p>
-            <p className="font-serif text-amber-200 text-lg">{m.bestSeason.record}</p>
-            <p className="text-amber-100/50 text-xs mt-1">{m.bestSeason.year} · {DATA.leagues.find(l => l.id === m.bestSeason.league).name}</p>
+          <div className="bg-sky-50 border border-sky-100 rounded-md p-4">
+            <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Best Single Season</p>
+            <p className="font-serif text-sky-700 text-lg">{m.bestSeason.record}</p>
+            <p className="text-slate-500 text-xs mt-1">{m.bestSeason.year} · {DATA.leagues.find(l => l.id === m.bestSeason.league).name}</p>
           </div>
-          <div className="bg-black/30 border border-amber-400/20 rounded-md p-4">
-            <p className="text-amber-100/40 text-[11px] uppercase tracking-wide mb-1">Career Championships</p>
-            <p className="font-serif text-amber-200 text-lg"><TrophyCount count={totalChampionships} /></p>
+          <div className="bg-sky-50 border border-sky-100 rounded-md p-4">
+            <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Career Championships</p>
+            <p className="font-serif text-sky-700 text-lg"><TrophyCount count={totalChampionships} /></p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-red-950/20 border border-red-400/20 rounded-md p-4">
-            <p className="text-red-300/70 text-[11px] uppercase tracking-wide mb-1">😈 Nemesis</p>
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-red-500 text-[11px] uppercase tracking-wide mb-1">😈 Nemesis</p>
             {nemesis ? (
               <React.Fragment>
-                <p className="font-serif text-red-200 text-lg">{nemesis.name}</p>
-                <p className="text-red-200/50 text-xs mt-1">{nemesisLosses} career losses suffered</p>
+                <p className="font-serif text-red-700 text-lg">{nemesis.name}</p>
+                <p className="text-red-500/70 text-xs mt-1">{nemesisLosses} career losses suffered</p>
               </React.Fragment>
-            ) : <p className="text-amber-100/30 text-sm italic">No rivals recorded</p>}
+            ) : <p className="text-slate-400 text-sm italic">No rivals recorded</p>}
           </div>
-          <div className="bg-emerald-950/20 border border-emerald-400/20 rounded-md p-4">
-            <p className="text-emerald-300/70 text-[11px] uppercase tracking-wide mb-1">🎯 Victim</p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-md p-4">
+            <p className="text-emerald-600 text-[11px] uppercase tracking-wide mb-1">🎯 Victim</p>
             {victim ? (
               <React.Fragment>
-                <p className="font-serif text-emerald-200 text-lg">{victim.name}</p>
-                <p className="text-emerald-200/50 text-xs mt-1">{victimWins} career wins earned</p>
+                <p className="font-serif text-emerald-700 text-lg">{victim.name}</p>
+                <p className="text-emerald-600/70 text-xs mt-1">{victimWins} career wins earned</p>
               </React.Fragment>
-            ) : <p className="text-amber-100/30 text-sm italic">No rivals recorded</p>}
+            ) : <p className="text-slate-400 text-sm italic">No rivals recorded</p>}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   RECORDS & SUPERLATIVES
+   ========================================================= */
+function RecordCard({ icon, title, children }) {
+  return (
+    <div className="plaque-texture border border-sky-100 rounded-lg p-4 shadow-gold-glow">
+      <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-2 flex items-center gap-1.5">
+        <span>{icon}</span>{title}
+      </p>
+      {children}
+    </div>
+  );
+}
+function weekLabel(year, week) {
+  return `${year}, Week ${week}`;
+}
+function RecordsAndSuperlatives({ exhibitId }) {
+  const r = (DATA.records && DATA.records[exhibitId]) || {};
+  const hasAny = Object.keys(r).length > 0;
+  if (!hasAny) return null;
+  const nm = id => (getManager(id) ? getManager(id).name : 'Unknown');
+
+  return (
+    <div className="mt-10">
+      <h3 className="font-serif text-xl text-slate-800 mb-1 flex items-center gap-2">📊 Records &amp; Superlatives</h3>
+      <p className="text-slate-400 text-sm mb-6">The extremes of league history — best, worst, hottest, coldest.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {r.highestScore && (
+          <RecordCard icon="🚀" title="Highest Score Ever">
+            <p className="font-serif text-2xl text-sky-700">{r.highestScore.score}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.highestScore.manager)} <span className="text-slate-400">vs</span> {nm(r.highestScore.opponent)}</p>
+            <p className="text-slate-400 text-xs mt-1">{weekLabel(r.highestScore.year, r.highestScore.week)}</p>
+          </RecordCard>
+        )}
+        {r.lowestScore && (
+          <RecordCard icon="🥶" title="Lowest Score Ever">
+            <p className="font-serif text-2xl text-sky-700">{r.lowestScore.score}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.lowestScore.manager)} <span className="text-slate-400">vs</span> {nm(r.lowestScore.opponent)}</p>
+            <p className="text-slate-400 text-xs mt-1">{weekLabel(r.lowestScore.year, r.lowestScore.week)}</p>
+          </RecordCard>
+        )}
+        {r.biggestBlowout && (
+          <RecordCard icon="💥" title="Biggest Blowout">
+            <p className="font-serif text-2xl text-sky-700">+{r.biggestBlowout.margin}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.biggestBlowout.winner)} {r.biggestBlowout.winnerScore} <span className="text-slate-400">def.</span> {nm(r.biggestBlowout.loser)} {r.biggestBlowout.loserScore}</p>
+            <p className="text-slate-400 text-xs mt-1">{weekLabel(r.biggestBlowout.year, r.biggestBlowout.week)}</p>
+          </RecordCard>
+        )}
+        {r.closestGame && (
+          <RecordCard icon="😅" title="Closest Game Ever">
+            <p className="font-serif text-2xl text-sky-700">{r.closestGame.margin}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.closestGame.winner)} {r.closestGame.winnerScore} <span className="text-slate-400">def.</span> {nm(r.closestGame.loser)} {r.closestGame.loserScore}</p>
+            <p className="text-slate-400 text-xs mt-1">{weekLabel(r.closestGame.year, r.closestGame.week)}</p>
+          </RecordCard>
+        )}
+        {r.longestWinStreak && r.longestWinStreak.manager && (
+          <RecordCard icon="🔥" title="Longest Win Streak">
+            <p className="font-serif text-2xl text-sky-700">{r.longestWinStreak.length} games</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.longestWinStreak.manager)}</p>
+            {r.longestWinStreak.range && (
+              <p className="text-slate-400 text-xs mt-1">{weekLabel(...r.longestWinStreak.range[0])} – {weekLabel(...r.longestWinStreak.range[1])}</p>
+            )}
+          </RecordCard>
+        )}
+        {r.longestLossStreak && r.longestLossStreak.manager && (
+          <RecordCard icon="🧊" title="Longest Losing Streak">
+            <p className="font-serif text-2xl text-sky-700">{r.longestLossStreak.length} games</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.longestLossStreak.manager)}</p>
+            {r.longestLossStreak.range && (
+              <p className="text-slate-400 text-xs mt-1">{weekLabel(...r.longestLossStreak.range[0])} – {weekLabel(...r.longestLossStreak.range[1])}</p>
+            )}
+          </RecordCard>
+        )}
+        {r.hottestCurrentStreak && (
+          <RecordCard icon="🌡️" title="Hottest Right Now">
+            <p className="font-serif text-2xl text-sky-700">{r.hottestCurrentStreak.length}-game win streak</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.hottestCurrentStreak.manager)}</p>
+            <p className="text-slate-400 text-xs mt-1">Through {weekLabel(r.hottestCurrentStreak.lastYear, r.hottestCurrentStreak.lastWeek)}</p>
+          </RecordCard>
+        )}
+        {r.coldestCurrentStreak && (
+          <RecordCard icon="❄️" title="Coldest Right Now">
+            <p className="font-serif text-2xl text-sky-700">{r.coldestCurrentStreak.length}-game slide</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.coldestCurrentStreak.manager)}</p>
+            <p className="text-slate-400 text-xs mt-1">Through {weekLabel(r.coldestCurrentStreak.lastYear, r.coldestCurrentStreak.lastWeek)}</p>
+          </RecordCard>
+        )}
+        {r.bestNeverWon && (
+          <RecordCard icon="💎" title="Best Team Never to Win It">
+            <p className="font-serif text-2xl text-sky-700">{pct(r.bestNeverWon.winPct)}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.bestNeverWon.manager)}</p>
+            <p className="text-slate-400 text-xs mt-1">{r.bestNeverWon.wins}-{r.bestNeverWon.losses}-{r.bestNeverWon.ties}, still no title</p>
+          </RecordCard>
+        )}
+        {r.longestDrought && (
+          <RecordCard icon="👻" title="Longest Championship Drought">
+            <p className="font-serif text-2xl text-sky-700">{r.longestDrought.drought} {r.longestDrought.drought === 1 ? 'season' : 'seasons'}</p>
+            <p className="text-slate-600 text-sm mt-1">{nm(r.longestDrought.manager)}</p>
+            <p className="text-slate-400 text-xs mt-1">{r.longestDrought.everWon ? 'Since their last title' : 'Still searching for a first title'}</p>
+          </RecordCard>
+        )}
       </div>
     </div>
   );
@@ -3841,23 +4859,26 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
     <div className="max-w-6xl mx-auto px-4 py-10">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
         <div>
-          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-1">{isMaster ? 'Master Exhibit' : exhibit.sport + ' League'}</p>
-          <h2 className="font-serif text-3xl text-amber-100">{exhibit.name}</h2>
+          <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">{isMaster ? 'Master Exhibit' : exhibit.sport + ' League'}</p>
+          <h2 className="font-serif text-3xl text-slate-800">{exhibit.name}</h2>
         </div>
-        <label className="flex items-center gap-3 bg-black/30 border border-amber-400/20 rounded-full px-4 py-2 select-none cursor-pointer">
-          <span className={"text-xs " + (!includeAlumni ? "text-amber-200 font-semibold" : "text-amber-100/40")}>Active Members</span>
+        <label className="flex items-center gap-3 bg-white border border-sky-200 rounded-full px-4 py-2 select-none cursor-pointer shadow-sm">
+          <span className={"text-xs " + (!includeAlumni ? "text-sky-700 font-semibold" : "text-slate-400")}>Active Members</span>
           <span
             onClick={() => setIncludeAlumni(!includeAlumni)}
-            className={"relative inline-flex h-5 w-9 items-center rounded-full transition " + (includeAlumni ? "bg-amber-500" : "bg-amber-100/20")}
+            className={"relative inline-flex h-5 w-9 items-center rounded-full transition " + (includeAlumni ? "bg-sky-500" : "bg-slate-200")}
           >
-            <span className={"inline-block h-4 w-4 transform rounded-full bg-obsidian transition " + (includeAlumni ? "translate-x-5" : "translate-x-1")} />
+            <span className={"inline-block h-4 w-4 transform rounded-full bg-white shadow transition " + (includeAlumni ? "translate-x-5" : "translate-x-1")} />
           </span>
-          <span className={"text-xs " + (includeAlumni ? "text-amber-200 font-semibold" : "text-amber-100/40")}>All-Time (Alumni)</span>
+          <span className={"text-xs " + (includeAlumni ? "text-sky-700 font-semibold" : "text-slate-400")}>All-Time (Alumni)</span>
         </label>
       </div>
 
       <StandingsTable rows={rows} onSelectManager={onSelectManager} showPlayoff={showPlayoff} />
+      {!isMaster && <RecordsAndSuperlatives exhibitId={exhibit.id} />}
       <RivalryTool managers={managers} />
+      {!isMaster && <TradeBlock exhibitId={exhibit.id} />}
+      {!isMaster && <LeagueTimeline exhibitId={exhibit.id} />}
     </div>
   );
 }
@@ -3868,9 +4889,9 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
 function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
   const tabs = ALL_EXHIBITS.filter(ex => unlocked.includes(ex.id));
   return (
-    <div className="sticky top-0 z-40 bg-obsidian/90 backdrop-blur border-b border-amber-400/20">
+    <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-sky-100 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <button onClick={onGoLobby} className="font-serif text-amber-200 text-sm tracking-wide flex items-center gap-2 hover:text-amber-100">
+        <button onClick={onGoLobby} className="font-serif text-slate-800 text-sm tracking-wide flex items-center gap-2 hover:text-sky-600">
           🏛️ <span className="hidden sm:inline">Hall of Fame</span>
         </button>
         <div className="flex items-center gap-1 overflow-x-auto">
@@ -3881,8 +4902,8 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
               className={
                 "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
                 (currentId === ex.id
-                  ? "bg-amber-400/15 border-amber-400/50 text-amber-200"
-                  : "border-transparent text-amber-100/50 hover:text-amber-200 hover:border-amber-400/20")
+                  ? "bg-sky-50 border-sky-300 text-sky-700"
+                  : "border-transparent text-slate-400 hover:text-sky-600 hover:border-sky-200")
               }
             >
               {ex.id === 'master' ? '👑 ' : ''}{ex.name}
@@ -3891,7 +4912,7 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
         </div>
         <button
           onClick={onLock}
-          className="text-xs border border-amber-400/30 text-amber-200/70 hover:text-amber-100 hover:border-amber-400/60 rounded-md px-3 py-1.5 whitespace-nowrap"
+          className="text-xs border border-sky-200 text-slate-500 hover:text-slate-800 hover:border-sky-400 rounded-md px-3 py-1.5 whitespace-nowrap"
         >
           🔒 Lock / Change Vault
         </button>
@@ -3981,7 +5002,7 @@ function App() {
         />
       )}
 
-      <footer className="text-center text-amber-100/20 text-xs py-10">
+      <footer className="text-center text-slate-300 text-xs py-10">
         Fantasy Sports Hall of Fame & Museum — Est. this season · All records are self-contained, no server required.
       </footer>
     </div>

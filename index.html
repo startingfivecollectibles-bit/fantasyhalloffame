@@ -3567,11 +3567,13 @@ function Lobby({ unlocked, onSelect }) {
 /* =========================================================
    STANDINGS TABLE
    ========================================================= */
-function StandingsTable({ rows, onSelectManager }) {
+function StandingsTable({ rows, onSelectManager, showPlayoff }) {
   if (rows.length === 0) {
     return <p className="text-amber-100/40 text-center py-10 italic">No managers to display for this filter.</p>;
   }
-  const cols = ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Playoff (W-L)', 'Playoff Win %', 'Seasons'];
+  const cols = showPlayoff
+    ? ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Playoff (W-L)', 'Playoff Win %', 'Seasons']
+    : ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Seasons'];
   return (
     <div className="overflow-x-auto rounded-lg border border-amber-400/20 shadow-gold-glow">
       <table className="min-w-full text-sm">
@@ -3597,8 +3599,8 @@ function StandingsTable({ rows, onSelectManager }) {
               <td className="px-4 py-3"><TrophyCount count={r.championships} /></td>
               <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.wins}-{r.losses}-{r.ties}</td>
               <td className="px-4 py-3 text-amber-200 font-semibold">{pct(r.winPct)}</td>
-              <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.playoffWins}-{r.playoffLosses}</td>
-              <td className="px-4 py-3 text-amber-100/80">{pct(r.playoffWinPct)}</td>
+              {showPlayoff && <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.playoffWins}-{r.playoffLosses}</td>}
+              {showPlayoff && <td className="px-4 py-3 text-amber-100/80">{pct(r.playoffWinPct)}</td>}
               <td className="px-4 py-3 text-amber-100/80">{r.seasonsActive}</td>
             </tr>
           ))}
@@ -3743,6 +3745,10 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
   const rows = useMemo(() => computeStandings(exhibit.id, includeAlumni), [exhibit.id, includeAlumni]);
   const managers = managersForExhibit(exhibit.id);
   const isMaster = exhibit.id === 'master';
+  // Playoff bracket detail only exists for Horner and Zero Prep (and the master
+  // rollup, since it sums whatever real playoff data exists across leagues).
+  // Jon Bought Dinner and Baseball have no reliable playoff W-L in the source data.
+  const showPlayoff = exhibit.id === 'work' || exhibit.id === 'football3' || isMaster;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
@@ -3763,7 +3769,7 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
         </label>
       </div>
 
-      <StandingsTable rows={rows} onSelectManager={onSelectManager} />
+      <StandingsTable rows={rows} onSelectManager={onSelectManager} showPlayoff={showPlayoff} />
       <RivalryTool managers={managers} />
     </div>
   );

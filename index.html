@@ -1,0 +1,3901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fantasy Sports Hall of Fame & Museum</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['Cinzel', 'serif'],
+          sans: ['Inter', 'sans-serif'],
+        },
+        colors: {
+          obsidian: '#090d16',
+          obsidian2: '#0d1220',
+          gold: {
+            50: '#fdf8e8',
+            100: '#f9edc0',
+            200: '#f3dd8a',
+            300: '#eecb5c',
+            400: '#e5b93f',
+            500: '#c99a2e',
+            600: '#a67b22',
+          }
+        },
+        boxShadow: {
+          'gold-glow': '0 0 0 1px rgba(251,191,36,0.25), 0 0 24px rgba(251,191,36,0.10)',
+          'gold-glow-lg': '0 0 0 1px rgba(251,191,36,0.35), 0 0 40px rgba(251,191,36,0.18)',
+        }
+      }
+    }
+  }
+</script>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+  body {
+    background-color: #090d16;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(197,155,46,0.06), transparent 40%),
+      radial-gradient(circle at 80% 0%, rgba(197,155,46,0.05), transparent 35%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.008) 0px, rgba(255,255,255,0.008) 1px, transparent 1px, transparent 3px);
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #090d16; }
+  ::-webkit-scrollbar-thumb { background: rgba(197,155,46,0.35); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(197,155,46,0.55); }
+
+  .plaque-texture {
+    background:
+      linear-gradient(160deg, rgba(255,255,255,0.03), transparent 40%),
+      linear-gradient(#141a2b, #0b0f1a);
+  }
+  .vault-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .vault-card:hover {
+    transform: translateY(-4px);
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .gold-shimmer-text {
+    background: linear-gradient(90deg, #a67b22, #f3dd8a, #eecb5c, #a67b22);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 6s linear infinite;
+  }
+  .modal-backdrop {
+    background: rgba(2,4,9,0.82);
+    backdrop-filter: blur(3px);
+  }
+</style>
+</head>
+<body class="min-h-screen text-amber-50 font-sans">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+/* =========================================================
+   EMBEDDED STARTER DATA
+   ========================================================= */
+const DATA = {
+  "leagues": [
+    {
+      "id": "work",
+      "name": "Horner Fantasy Football League",
+      "sport": "Football",
+      "pin": "1111"
+    },
+    {
+      "id": "football2",
+      "name": "Jon Bought Dinner Memorial JK",
+      "sport": "Football",
+      "pin": "2222"
+    },
+    {
+      "id": "football3",
+      "name": "Zero Prep Battle of the Sexes",
+      "sport": "Football",
+      "pin": "3333"
+    },
+    {
+      "id": "baseball",
+      "name": "Jon Memorial League",
+      "sport": "Baseball",
+      "pin": "4444"
+    }
+  ],
+  "master": {
+    "id": "master",
+    "name": "Master All-Time Leaderboard",
+    "pin": "9999"
+  },
+  "managers": [
+    {
+      "id": "adam-wolski",
+      "name": "Adam Wolski",
+      "bestSeason": {
+        "year": 2021,
+        "league": "football2",
+        "record": "15-3-0"
+      }
+    },
+    {
+      "id": "aitor-de-legarra",
+      "name": "Aitor de Legarra",
+      "bestSeason": {
+        "year": 2024,
+        "league": "baseball",
+        "record": "152-143-13"
+      }
+    },
+    {
+      "id": "andrew-shaffer",
+      "name": "Andrew Shaffer",
+      "bestSeason": {
+        "year": 2016,
+        "league": "football3",
+        "record": "13-3-0"
+      }
+    },
+    {
+      "id": "benjamin-peterson",
+      "name": "Benjamin Peterson",
+      "bestSeason": {
+        "year": 2012,
+        "league": "football3",
+        "record": "4-9-0"
+      }
+    },
+    {
+      "id": "brian-damiani",
+      "name": "Brian Damiani",
+      "bestSeason": null
+    },
+    {
+      "id": "cade-gallegos",
+      "name": "Cade Gallegos",
+      "bestSeason": null
+    },
+    {
+      "id": "chris-pecot",
+      "name": "Chris Pecot",
+      "bestSeason": null
+    },
+    {
+      "id": "dan-plummer",
+      "name": "Dan Plummer",
+      "bestSeason": {
+        "year": 2021,
+        "league": "football3",
+        "record": "12-4-0"
+      }
+    },
+    {
+      "id": "dave-beck",
+      "name": "Dave Beck",
+      "bestSeason": {
+        "year": 2016,
+        "league": "football3",
+        "record": "12-4-0"
+      }
+    },
+    {
+      "id": "david-beck",
+      "name": "David Beck",
+      "bestSeason": {
+        "year": 2025,
+        "league": "baseball",
+        "record": "129-167-12"
+      }
+    },
+    {
+      "id": "diego-papa",
+      "name": "Diego Papa",
+      "bestSeason": {
+        "year": 2025,
+        "league": "football3",
+        "record": "17-7-0"
+      }
+    },
+    {
+      "id": "drew-bayly",
+      "name": "Drew Bayly",
+      "bestSeason": {
+        "year": 2025,
+        "league": "baseball",
+        "record": "165-126-17"
+      }
+    },
+    {
+      "id": "drew-gallegos",
+      "name": "Drew Gallegos",
+      "bestSeason": {
+        "year": 2015,
+        "league": "football2",
+        "record": "12-5-0"
+      }
+    },
+    {
+      "id": "greg-wylie",
+      "name": "Greg Wylie",
+      "bestSeason": {
+        "year": 2018,
+        "league": "football2",
+        "record": "14-3-0"
+      }
+    },
+    {
+      "id": "harjit-gill",
+      "name": "Harjit Gill",
+      "bestSeason": null
+    },
+    {
+      "id": "jacob-mcclusky",
+      "name": "Jacob McClusky",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "6-7-0"
+      }
+    },
+    {
+      "id": "james-jones",
+      "name": "James Jones",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "5-8-0"
+      }
+    },
+    {
+      "id": "jason-whalley",
+      "name": "Jason Whalley",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "7-6-0"
+      }
+    },
+    {
+      "id": "jessie-qutami",
+      "name": "Jessie Qutami",
+      "bestSeason": {
+        "year": 2025,
+        "league": "work",
+        "record": "8-5-0"
+      }
+    },
+    {
+      "id": "joanna-sullivan",
+      "name": "Joanna Sullivan",
+      "bestSeason": {
+        "year": 2022,
+        "league": "football3",
+        "record": "11-5-0"
+      }
+    },
+    {
+      "id": "john-wou",
+      "name": "John Wou",
+      "bestSeason": {
+        "year": 2025,
+        "league": "work",
+        "record": "7-6-0"
+      }
+    },
+    {
+      "id": "jon-sullivan",
+      "name": "Jon Sullivan",
+      "bestSeason": {
+        "year": 2016,
+        "league": "football2",
+        "record": "11-6-0"
+      }
+    },
+    {
+      "id": "josh-batacan",
+      "name": "Josh Batacan",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "7-6-0"
+      }
+    },
+    {
+      "id": "josh-steckler",
+      "name": "Josh Steckler",
+      "bestSeason": {
+        "year": 2025,
+        "league": "work",
+        "record": "5-8-0"
+      }
+    },
+    {
+      "id": "kelly-mcclean",
+      "name": "Kelly McClean",
+      "bestSeason": {
+        "year": 2016,
+        "league": "football3",
+        "record": "8-9-0"
+      }
+    },
+    {
+      "id": "kevin-bayly",
+      "name": "Kevin Bayly",
+      "bestSeason": {
+        "year": 2019,
+        "league": "football2",
+        "record": "13-4-0"
+      }
+    },
+    {
+      "id": "kyle-moyles",
+      "name": "Kyle Moyles",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "7-6-0"
+      }
+    },
+    {
+      "id": "mark-tannahill",
+      "name": "Mark Tannahill",
+      "bestSeason": {
+        "year": 2016,
+        "league": "football2",
+        "record": "12-5-0"
+      }
+    },
+    {
+      "id": "matt-shaffer",
+      "name": "Matt Shaffer",
+      "bestSeason": {
+        "year": 2023,
+        "league": "football2",
+        "record": "17-1-0"
+      }
+    },
+    {
+      "id": "matt-sullivan",
+      "name": "Matt Sullivan",
+      "bestSeason": {
+        "year": 2015,
+        "league": "football3",
+        "record": "15-1-0"
+      }
+    },
+    {
+      "id": "mitchell-sullivan",
+      "name": "Mitchell Sullivan",
+      "bestSeason": {
+        "year": 2024,
+        "league": "football3",
+        "record": "8-4-0"
+      }
+    },
+    {
+      "id": "noah-shaffer",
+      "name": "Noah Shaffer",
+      "bestSeason": {
+        "year": 2022,
+        "league": "football3",
+        "record": "11-4-0"
+      }
+    },
+    {
+      "id": "paul-sullivan",
+      "name": "Paul Sullivan",
+      "bestSeason": {
+        "year": 2022,
+        "league": "football2",
+        "record": "14-4-0"
+      }
+    },
+    {
+      "id": "rob-bowlby",
+      "name": "Rob Bowlby",
+      "bestSeason": {
+        "year": 2017,
+        "league": "football2",
+        "record": "12-5-0"
+      }
+    },
+    {
+      "id": "rob-seymore-sr",
+      "name": "Rob Seymore Sr.",
+      "bestSeason": null
+    },
+    {
+      "id": "robert-seymore-jr",
+      "name": "Robert Seymore Jr.",
+      "bestSeason": {
+        "year": 2021,
+        "league": "football2",
+        "record": "10-8-0"
+      }
+    },
+    {
+      "id": "romina-papa",
+      "name": "Romina Papa",
+      "bestSeason": {
+        "year": 2024,
+        "league": "work",
+        "record": "13-0-0"
+      }
+    },
+    {
+      "id": "rosada-plummer",
+      "name": "Rosada Plummer",
+      "bestSeason": {
+        "year": 2014,
+        "league": "football3",
+        "record": "11-2-0"
+      }
+    },
+    {
+      "id": "tammy-carlson",
+      "name": "Tammy Carlson",
+      "bestSeason": {
+        "year": 2012,
+        "league": "football3",
+        "record": "1-12-0"
+      }
+    },
+    {
+      "id": "tera-gallegos",
+      "name": "Tera Gallegos",
+      "bestSeason": {
+        "year": 2018,
+        "league": "football3",
+        "record": "10-7-0"
+      }
+    }
+  ],
+  "stats": [
+    {
+      "managerId": "romina-papa",
+      "league": "work",
+      "wins": 22,
+      "losses": 4,
+      "ties": 0,
+      "playoffWins": 4,
+      "playoffLosses": 0,
+      "championships": 2,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "matt-shaffer",
+      "league": "work",
+      "wins": 18,
+      "losses": 8,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 2,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "jessie-qutami",
+      "league": "work",
+      "wins": 15,
+      "losses": 11,
+      "ties": 0,
+      "playoffWins": 4,
+      "playoffLosses": 2,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "jason-whalley",
+      "league": "work",
+      "wins": 12,
+      "losses": 14,
+      "ties": 0,
+      "playoffWins": 1,
+      "playoffLosses": 5,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "kyle-moyles",
+      "league": "work",
+      "wins": 14,
+      "losses": 12,
+      "ties": 0,
+      "playoffWins": 3,
+      "playoffLosses": 3,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "josh-batacan",
+      "league": "work",
+      "wins": 12,
+      "losses": 14,
+      "ties": 0,
+      "playoffWins": 1,
+      "playoffLosses": 5,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "james-jones",
+      "league": "work",
+      "wins": 10,
+      "losses": 16,
+      "ties": 0,
+      "playoffWins": 5,
+      "playoffLosses": 1,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "jacob-mcclusky",
+      "league": "work",
+      "wins": 11,
+      "losses": 15,
+      "ties": 0,
+      "playoffWins": 4,
+      "playoffLosses": 2,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "josh-steckler",
+      "league": "work",
+      "wins": 7,
+      "losses": 19,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 4,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "john-wou",
+      "league": "work",
+      "wins": 9,
+      "losses": 17,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 4,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "greg-wylie",
+      "league": "football2",
+      "wins": 124,
+      "losses": 102,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 2,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "kevin-bayly",
+      "league": "football2",
+      "wins": 107,
+      "losses": 119,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "mark-tannahill",
+      "league": "football2",
+      "wins": 119,
+      "losses": 107,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 2,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "matt-sullivan",
+      "league": "football2",
+      "wins": 117,
+      "losses": 109,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "paul-sullivan",
+      "league": "football2",
+      "wins": 112,
+      "losses": 114,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "rob-bowlby",
+      "league": "football2",
+      "wins": 102,
+      "losses": 124,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "jon-sullivan",
+      "league": "football2",
+      "wins": 58,
+      "losses": 61,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 7,
+      "active": false
+    },
+    {
+      "managerId": "adam-wolski",
+      "league": "football2",
+      "wins": 120,
+      "losses": 106,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 2,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "drew-gallegos",
+      "league": "football2",
+      "wins": 57,
+      "losses": 62,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 7,
+      "active": false
+    },
+    {
+      "managerId": "matt-shaffer",
+      "league": "football2",
+      "wins": 133,
+      "losses": 93,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 3,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "robert-seymore-jr",
+      "league": "football2",
+      "wins": 74,
+      "losses": 84,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 9,
+      "active": true
+    },
+    {
+      "managerId": "joanna-sullivan",
+      "league": "football2",
+      "wins": 58,
+      "losses": 100,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 9,
+      "active": true
+    },
+    {
+      "managerId": "matt-shaffer",
+      "league": "football3",
+      "wins": 135,
+      "losses": 85,
+      "ties": 0,
+      "playoffWins": 7,
+      "playoffLosses": 3,
+      "championships": 3,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "rosada-plummer",
+      "league": "football3",
+      "wins": 116,
+      "losses": 102,
+      "ties": 0,
+      "playoffWins": 5,
+      "playoffLosses": 5,
+      "championships": 3,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "romina-papa",
+      "league": "football3",
+      "wins": 112,
+      "losses": 102,
+      "ties": 0,
+      "playoffWins": 5,
+      "playoffLosses": 5,
+      "championships": 2,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "noah-shaffer",
+      "league": "football3",
+      "wins": 111,
+      "losses": 107,
+      "ties": 0,
+      "playoffWins": 4,
+      "playoffLosses": 6,
+      "championships": 1,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "tammy-carlson",
+      "league": "football3",
+      "wins": 1,
+      "losses": 12,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 1,
+      "active": false
+    },
+    {
+      "managerId": "benjamin-peterson",
+      "league": "football3",
+      "wins": 4,
+      "losses": 9,
+      "ties": 0,
+      "playoffWins": 1,
+      "playoffLosses": 1,
+      "championships": 0,
+      "seasonsActive": 1,
+      "active": false
+    },
+    {
+      "managerId": "matt-sullivan",
+      "league": "football3",
+      "wins": 96,
+      "losses": 121,
+      "ties": 0,
+      "playoffWins": 5,
+      "playoffLosses": 5,
+      "championships": 1,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "andrew-shaffer",
+      "league": "football3",
+      "wins": 122,
+      "losses": 96,
+      "ties": 0,
+      "playoffWins": 6,
+      "playoffLosses": 3,
+      "championships": 4,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "dan-plummer",
+      "league": "football3",
+      "wins": 113,
+      "losses": 108,
+      "ties": 0,
+      "playoffWins": 3,
+      "playoffLosses": 7,
+      "championships": 0,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "joanna-sullivan",
+      "league": "football3",
+      "wins": 79,
+      "losses": 138,
+      "ties": 0,
+      "playoffWins": 3,
+      "playoffLosses": 7,
+      "championships": 0,
+      "seasonsActive": 14,
+      "active": true
+    },
+    {
+      "managerId": "dave-beck",
+      "league": "football3",
+      "wins": 118,
+      "losses": 89,
+      "ties": 0,
+      "playoffWins": 5,
+      "playoffLosses": 2,
+      "championships": 0,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "diego-papa",
+      "league": "football3",
+      "wins": 107,
+      "losses": 99,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 5,
+      "championships": 0,
+      "seasonsActive": 13,
+      "active": true
+    },
+    {
+      "managerId": "tera-gallegos",
+      "league": "football3",
+      "wins": 40,
+      "losses": 69,
+      "ties": 0,
+      "playoffWins": 2,
+      "playoffLosses": 1,
+      "championships": 0,
+      "seasonsActive": 7,
+      "active": false
+    },
+    {
+      "managerId": "kelly-mcclean",
+      "league": "football3",
+      "wins": 31,
+      "losses": 47,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 5,
+      "active": false
+    },
+    {
+      "managerId": "mitchell-sullivan",
+      "league": "football3",
+      "wins": 25,
+      "losses": 19,
+      "ties": 0,
+      "playoffWins": 1,
+      "playoffLosses": 1,
+      "championships": 0,
+      "seasonsActive": 3,
+      "active": false
+    },
+    {
+      "managerId": "matt-shaffer",
+      "league": "baseball",
+      "wins": 285,
+      "losses": 297,
+      "ties": 34,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 4,
+      "seasonsActive": 16,
+      "active": true
+    },
+    {
+      "managerId": "kevin-bayly",
+      "league": "baseball",
+      "wins": 287,
+      "losses": 302,
+      "ties": 27,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 16,
+      "active": true
+    },
+    {
+      "managerId": "adam-wolski",
+      "league": "baseball",
+      "wins": 362,
+      "losses": 220,
+      "ties": 34,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 6,
+      "seasonsActive": 16,
+      "active": true
+    },
+    {
+      "managerId": "drew-bayly",
+      "league": "baseball",
+      "wins": 275,
+      "losses": 306,
+      "ties": 35,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 16,
+      "active": true
+    },
+    {
+      "managerId": "aitor-de-legarra",
+      "league": "baseball",
+      "wins": 298,
+      "losses": 288,
+      "ties": 30,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 6,
+      "active": true
+    },
+    {
+      "managerId": "diego-papa",
+      "league": "baseball",
+      "wins": 283,
+      "losses": 308,
+      "ties": 25,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 2,
+      "active": true
+    },
+    {
+      "managerId": "david-beck",
+      "league": "baseball",
+      "wins": 246,
+      "losses": 337,
+      "ties": 33,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 7,
+      "active": true
+    },
+    {
+      "managerId": "matt-sullivan",
+      "league": "baseball",
+      "wins": 304,
+      "losses": 282,
+      "ties": 30,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 16,
+      "active": true
+    },
+    {
+      "managerId": "andrew-shaffer",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 5,
+      "active": false
+    },
+    {
+      "managerId": "greg-wylie",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 11,
+      "active": false
+    },
+    {
+      "managerId": "harjit-gill",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 8,
+      "active": false
+    },
+    {
+      "managerId": "brian-damiani",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 7,
+      "active": false
+    },
+    {
+      "managerId": "mark-tannahill",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 8,
+      "active": false
+    },
+    {
+      "managerId": "jon-sullivan",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 9,
+      "active": false
+    },
+    {
+      "managerId": "cade-gallegos",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 1,
+      "seasonsActive": 3,
+      "active": false
+    },
+    {
+      "managerId": "chris-pecot",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 0,
+      "seasonsActive": 1,
+      "active": false
+    },
+    {
+      "managerId": "rob-seymore-sr",
+      "league": "baseball",
+      "wins": 0,
+      "losses": 0,
+      "ties": 0,
+      "playoffWins": 0,
+      "playoffLosses": 0,
+      "championships": 2,
+      "seasonsActive": 3,
+      "active": false
+    }
+  ],
+  "h2h": [
+    {
+      "a": "jason-whalley",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 458.34,
+      "bPoints": 519.24
+    },
+    {
+      "a": "james-jones",
+      "b": "josh-steckler",
+      "aWins": 6,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 2,
+      "bPlayoffWins": 0,
+      "aPoints": 975.28,
+      "bPoints": 749.08
+    },
+    {
+      "a": "john-wou",
+      "b": "kyle-moyles",
+      "aWins": 2,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 538.32,
+      "bPoints": 575.4
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "josh-batacan",
+      "aWins": 5,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 2,
+      "bPlayoffWins": 0,
+      "aPoints": 732.9,
+      "bPoints": 639.16
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "romina-papa",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 454.42,
+      "bPoints": 537.28
+    },
+    {
+      "a": "jason-whalley",
+      "b": "josh-steckler",
+      "aWins": 3,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 747.54,
+      "bPoints": 747.24
+    },
+    {
+      "a": "john-wou",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 640.94,
+      "bPoints": 792.66
+    },
+    {
+      "a": "james-jones",
+      "b": "jessie-qutami",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 370.0,
+      "bPoints": 539.12
+    },
+    {
+      "a": "kyle-moyles",
+      "b": "romina-papa",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 440.9,
+      "bPoints": 574.86
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "josh-batacan",
+      "aWins": 2,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 491.58,
+      "bPoints": 439.22
+    },
+    {
+      "a": "jason-whalley",
+      "b": "john-wou",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 421.36,
+      "bPoints": 423.78
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "josh-steckler",
+      "aWins": 3,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 569.04,
+      "bPoints": 454.8
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "romina-papa",
+      "aWins": 15,
+      "bWins": 17,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 2,
+      "aPoints": 3972.46,
+      "bPoints": 3940.4
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "james-jones",
+      "aWins": 4,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 2,
+      "aPoints": 1013.44,
+      "bPoints": 1040.6
+    },
+    {
+      "a": "josh-batacan",
+      "b": "kyle-moyles",
+      "aWins": 3,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 3,
+      "aPoints": 1184.32,
+      "bPoints": 1418.78
+    },
+    {
+      "a": "jason-whalley",
+      "b": "jessie-qutami",
+      "aWins": 3,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 762.82,
+      "bPoints": 705.02
+    },
+    {
+      "a": "john-wou",
+      "b": "romina-papa",
+      "aWins": 1,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 674.66,
+      "bPoints": 752.78
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "josh-steckler",
+      "aWins": 3,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 579.0,
+      "bPoints": 566.64
+    },
+    {
+      "a": "josh-batacan",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 498.5,
+      "bPoints": 508.86
+    },
+    {
+      "a": "james-jones",
+      "b": "kyle-moyles",
+      "aWins": 0,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 493.48,
+      "bPoints": 572.32
+    },
+    {
+      "a": "jason-whalley",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 545.26,
+      "bPoints": 602.6
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "jessie-qutami",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 241.3,
+      "bPoints": 264.28
+    },
+    {
+      "a": "john-wou",
+      "b": "josh-batacan",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 244.66,
+      "bPoints": 255.58
+    },
+    {
+      "a": "josh-steckler",
+      "b": "kyle-moyles",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 252.08,
+      "bPoints": 247.1
+    },
+    {
+      "a": "james-jones",
+      "b": "matt-shaffer",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 247.68,
+      "bPoints": 277.96
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "jason-whalley",
+      "aWins": 1,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 326.68,
+      "bPoints": 294.6
+    },
+    {
+      "a": "josh-batacan",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 252.74,
+      "bPoints": 375.42
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "kyle-moyles",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 242.64,
+      "bPoints": 271.68
+    },
+    {
+      "a": "james-jones",
+      "b": "john-wou",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 268.22,
+      "bPoints": 202.96
+    },
+    {
+      "a": "josh-steckler",
+      "b": "matt-shaffer",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 189.72,
+      "bPoints": 254.02
+    },
+    {
+      "a": "jason-whalley",
+      "b": "josh-batacan",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 228.48,
+      "bPoints": 263.06
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "kyle-moyles",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 226.42,
+      "bPoints": 241.76
+    },
+    {
+      "a": "james-jones",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 172.68,
+      "bPoints": 272.96
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 738.76,
+      "bPoints": 825.8
+    },
+    {
+      "a": "john-wou",
+      "b": "josh-steckler",
+      "aWins": 2,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 520.64,
+      "bPoints": 510.32
+    },
+    {
+      "a": "jason-whalley",
+      "b": "kyle-moyles",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 340.38,
+      "bPoints": 322.34
+    },
+    {
+      "a": "james-jones",
+      "b": "josh-batacan",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 276.26,
+      "bPoints": 263.64
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 237.24,
+      "bPoints": 244.78
+    },
+    {
+      "a": "josh-steckler",
+      "b": "romina-papa",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 245.4,
+      "bPoints": 250.74
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "john-wou",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 324.26,
+      "bPoints": 220.4
+    },
+    {
+      "a": "james-jones",
+      "b": "jason-whalley",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 361.24,
+      "bPoints": 290.54
+    },
+    {
+      "a": "kyle-moyles",
+      "b": "matt-shaffer",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 230.5,
+      "bPoints": 274.92
+    },
+    {
+      "a": "josh-batacan",
+      "b": "josh-steckler",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 222.54,
+      "bPoints": 219.04
+    },
+    {
+      "a": "jacob-mcclusky",
+      "b": "john-wou",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 640.66,
+      "bPoints": 462.14
+    },
+    {
+      "a": "jessie-qutami",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 458.72,
+      "bPoints": 578.36
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "rob-bowlby",
+      "aWins": 16,
+      "bWins": 17,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 3178.0,
+      "bPoints": 3321.96
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "matt-shaffer",
+      "aWins": 7,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1395.78,
+      "bPoints": 1512.64
+    },
+    {
+      "a": "greg-wylie",
+      "b": "matt-sullivan",
+      "aWins": 14,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2637.6,
+      "bPoints": 2490.76
+    },
+    {
+      "a": "adam-wolski",
+      "b": "mark-tannahill",
+      "aWins": 15,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2629.32,
+      "bPoints": 2519.46
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "paul-sullivan",
+      "aWins": 6,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1089.12,
+      "bPoints": 1186.86
+    },
+    {
+      "a": "mark-tannahill",
+      "b": "rob-bowlby",
+      "aWins": 20,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 3063.28,
+      "bPoints": 2781.54
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "matt-sullivan",
+      "aWins": 7,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1398.82,
+      "bPoints": 1466.14
+    },
+    {
+      "a": "adam-wolski",
+      "b": "matt-shaffer",
+      "aWins": 12,
+      "bWins": 17,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2782.3,
+      "bPoints": 2950.62
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "greg-wylie",
+      "aWins": 7,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1162.72,
+      "bPoints": 1072.7
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "paul-sullivan",
+      "aWins": 19,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 3254.3,
+      "bPoints": 3160.76
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "rob-bowlby",
+      "aWins": 13,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2683.7,
+      "bPoints": 2689.16
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "matt-sullivan",
+      "aWins": 10,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1730.18,
+      "bPoints": 1805.22
+    },
+    {
+      "a": "adam-wolski",
+      "b": "jon-sullivan",
+      "aWins": 6,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1395.46,
+      "bPoints": 1490.46
+    },
+    {
+      "a": "mark-tannahill",
+      "b": "paul-sullivan",
+      "aWins": 11,
+      "bWins": 15,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2483.32,
+      "bPoints": 2566.06
+    },
+    {
+      "a": "greg-wylie",
+      "b": "kevin-bayly",
+      "aWins": 19,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2776.56,
+      "bPoints": 2386.06
+    },
+    {
+      "a": "adam-wolski",
+      "b": "rob-bowlby",
+      "aWins": 15,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2402.68,
+      "bPoints": 2194.54
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "jon-sullivan",
+      "aWins": 6,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1180.3,
+      "bPoints": 1287.18
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "paul-sullivan",
+      "aWins": 15,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2550.5,
+      "bPoints": 2438.16
+    },
+    {
+      "a": "greg-wylie",
+      "b": "mark-tannahill",
+      "aWins": 13,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2668.8,
+      "bPoints": 2639.54
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "matt-sullivan",
+      "aWins": 9,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1992.54,
+      "bPoints": 2014.44
+    },
+    {
+      "a": "mark-tannahill",
+      "b": "matt-sullivan",
+      "aWins": 15,
+      "bWins": 16,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2984.0,
+      "bPoints": 2880.06
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "rob-bowlby",
+      "aWins": 4,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 976.68,
+      "bPoints": 1088.56
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "kevin-bayly",
+      "aWins": 6,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1064.94,
+      "bPoints": 1067.12
+    },
+    {
+      "a": "greg-wylie",
+      "b": "matt-shaffer",
+      "aWins": 13,
+      "bWins": 16,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2852.62,
+      "bPoints": 2864.92
+    },
+    {
+      "a": "adam-wolski",
+      "b": "paul-sullivan",
+      "aWins": 10,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2236.96,
+      "bPoints": 2314.24
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "kevin-bayly",
+      "aWins": 8,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1131.02,
+      "bPoints": 1001.6
+    },
+    {
+      "a": "paul-sullivan",
+      "b": "rob-bowlby",
+      "aWins": 7,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1857.76,
+      "bPoints": 1944.2
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "mark-tannahill",
+      "aWins": 4,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1091.98,
+      "bPoints": 1161.34
+    },
+    {
+      "a": "adam-wolski",
+      "b": "greg-wylie",
+      "aWins": 12,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2324.6,
+      "bPoints": 2434.0
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "matt-sullivan",
+      "aWins": 26,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 4392.06,
+      "bPoints": 3963.88
+    },
+    {
+      "a": "greg-wylie",
+      "b": "rob-bowlby",
+      "aWins": 9,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1515.94,
+      "bPoints": 1432.12
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "matt-shaffer",
+      "aWins": 3,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 907.88,
+      "bPoints": 904.62
+    },
+    {
+      "a": "adam-wolski",
+      "b": "matt-sullivan",
+      "aWins": 12,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2457.84,
+      "bPoints": 2495.08
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "paul-sullivan",
+      "aWins": 4,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 977.5,
+      "bPoints": 982.14
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "mark-tannahill",
+      "aWins": 9,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1849.06,
+      "bPoints": 1958.12
+    },
+    {
+      "a": "greg-wylie",
+      "b": "paul-sullivan",
+      "aWins": 8,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2114.78,
+      "bPoints": 2283.36
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "rob-bowlby",
+      "aWins": 13,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1875.7,
+      "bPoints": 1660.22
+    },
+    {
+      "a": "adam-wolski",
+      "b": "drew-gallegos",
+      "aWins": 3,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 728.34,
+      "bPoints": 753.36
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "mark-tannahill",
+      "aWins": 4,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 735.82,
+      "bPoints": 698.04
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "matt-shaffer",
+      "aWins": 10,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1821.48,
+      "bPoints": 1831.36
+    },
+    {
+      "a": "mark-tannahill",
+      "b": "matt-shaffer",
+      "aWins": 6,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1554.7,
+      "bPoints": 1781.68
+    },
+    {
+      "a": "adam-wolski",
+      "b": "kevin-bayly",
+      "aWins": 10,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2279.34,
+      "bPoints": 2273.6
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "rob-bowlby",
+      "aWins": 8,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1541.24,
+      "bPoints": 1678.74
+    },
+    {
+      "a": "greg-wylie",
+      "b": "jon-sullivan",
+      "aWins": 8,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1177.02,
+      "bPoints": 951.82
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "paul-sullivan",
+      "aWins": 11,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2023.7,
+      "bPoints": 1949.28
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "robert-seymore-jr",
+      "aWins": 2,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1355.84,
+      "bPoints": 1603.4
+    },
+    {
+      "a": "paul-sullivan",
+      "b": "robert-seymore-jr",
+      "aWins": 9,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1719.18,
+      "bPoints": 1744.44
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "mark-tannahill",
+      "aWins": 4,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1415.74,
+      "bPoints": 1639.0
+    },
+    {
+      "a": "mark-tannahill",
+      "b": "robert-seymore-jr",
+      "aWins": 11,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1899.66,
+      "bPoints": 1760.54
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "matt-sullivan",
+      "aWins": 23,
+      "bWins": 20,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 4391.46,
+      "bPoints": 4393.22
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "robert-seymore-jr",
+      "aWins": 11,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1735.84,
+      "bPoints": 1504.3
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "jon-sullivan",
+      "aWins": 2,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 332.18,
+      "bPoints": 322.04
+    },
+    {
+      "a": "jon-sullivan",
+      "b": "robert-seymore-jr",
+      "aWins": 3,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 562.62,
+      "bPoints": 539.0
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "matt-shaffer",
+      "aWins": 7,
+      "bWins": 26,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 3093.24,
+      "bPoints": 3837.5
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "robert-seymore-jr",
+      "aWins": 13,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2029.46,
+      "bPoints": 1751.38
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "rob-bowlby",
+      "aWins": 5,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1302.36,
+      "bPoints": 1440.26
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "kevin-bayly",
+      "aWins": 8,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1905.96,
+      "bPoints": 2010.1
+    },
+    {
+      "a": "rob-bowlby",
+      "b": "robert-seymore-jr",
+      "aWins": 8,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1847.32,
+      "bPoints": 2078.8
+    },
+    {
+      "a": "adam-wolski",
+      "b": "joanna-sullivan",
+      "aWins": 11,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1498.92,
+      "bPoints": 1237.46
+    },
+    {
+      "a": "kevin-bayly",
+      "b": "robert-seymore-jr",
+      "aWins": 4,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 910.46,
+      "bPoints": 968.3
+    },
+    {
+      "a": "adam-wolski",
+      "b": "robert-seymore-jr",
+      "aWins": 14,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1938.26,
+      "bPoints": 1614.78
+    },
+    {
+      "a": "greg-wylie",
+      "b": "joanna-sullivan",
+      "aWins": 14,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2596.48,
+      "bPoints": 2455.24
+    },
+    {
+      "a": "greg-wylie",
+      "b": "robert-seymore-jr",
+      "aWins": 8,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1141.08,
+      "bPoints": 818.14
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "joanna-sullivan",
+      "aWins": 1,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 398.22,
+      "bPoints": 438.6
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "paul-sullivan",
+      "aWins": 8,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1596.0,
+      "bPoints": 1579.52
+    },
+    {
+      "a": "drew-gallegos",
+      "b": "robert-seymore-jr",
+      "aWins": 1,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 322.46,
+      "bPoints": 405.12
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "benjamin-peterson",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 208.4,
+      "bPoints": 246.3
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "noah-shaffer",
+      "aWins": 8,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1956.84,
+      "bPoints": 2116.14
+    },
+    {
+      "a": "dan-plummer",
+      "b": "tammy-carlson",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 217.5,
+      "bPoints": 210.4
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "rosada-plummer",
+      "aWins": 6,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2131.92,
+      "bPoints": 2282.08
+    },
+    {
+      "a": "dan-plummer",
+      "b": "romina-papa",
+      "aWins": 12,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2371.64,
+      "bPoints": 2199.54
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "joanna-sullivan",
+      "aWins": 1,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 141.5,
+      "bPoints": 86.9
+    },
+    {
+      "a": "noah-shaffer",
+      "b": "tammy-carlson",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 240.9,
+      "bPoints": 205.5
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "rosada-plummer",
+      "aWins": 11,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2239.04,
+      "bPoints": 2020.5
+    },
+    {
+      "a": "dan-plummer",
+      "b": "matt-sullivan",
+      "aWins": 8,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2044.52,
+      "bPoints": 2199.38
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "rosada-plummer",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 267.6,
+      "bPoints": 258.4
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "tammy-carlson",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 213.6,
+      "bPoints": 141.9
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "matt-shaffer",
+      "aWins": 11,
+      "bWins": 14,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2783.04,
+      "bPoints": 2956.48
+    },
+    {
+      "a": "noah-shaffer",
+      "b": "romina-papa",
+      "aWins": 10,
+      "bWins": 16,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 2935.66,
+      "bPoints": 2974.08
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "romina-papa",
+      "aWins": 9,
+      "bWins": 15,
+      "ties": 0,
+      "aPlayoffWins": 2,
+      "bPlayoffWins": 1,
+      "aPoints": 2529.54,
+      "bPoints": 2659.9
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "matt-shaffer",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 226.1,
+      "bPoints": 262.4
+    },
+    {
+      "a": "dan-plummer",
+      "b": "noah-shaffer",
+      "aWins": 6,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1793.58,
+      "bPoints": 2031.14
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "matt-sullivan",
+      "aWins": 11,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 2673.86,
+      "bPoints": 2828.82
+    },
+    {
+      "a": "rosada-plummer",
+      "b": "tammy-carlson",
+      "aWins": 1,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 140.6,
+      "bPoints": 130.1
+    },
+    {
+      "a": "dan-plummer",
+      "b": "joanna-sullivan",
+      "aWins": 14,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 2743.2,
+      "bPoints": 2771.4
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "noah-shaffer",
+      "aWins": 13,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2254.94,
+      "bPoints": 2158.36
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "rosada-plummer",
+      "aWins": 17,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 3326.36,
+      "bPoints": 2857.8
+    },
+    {
+      "a": "romina-papa",
+      "b": "tammy-carlson",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 289.7,
+      "bPoints": 169.3
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "matt-sullivan",
+      "aWins": 1,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 420.4,
+      "bPoints": 516.7
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "noah-shaffer",
+      "aWins": 12,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 3,
+      "bPlayoffWins": 0,
+      "aPoints": 2651.02,
+      "bPoints": 2494.88
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 112.5,
+      "bPoints": 112.7
+    },
+    {
+      "a": "dan-plummer",
+      "b": "rosada-plummer",
+      "aWins": 17,
+      "bWins": 16,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 2,
+      "aPoints": 3622.2,
+      "bPoints": 3936.76
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "tammy-carlson",
+      "aWins": 1,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 332.1,
+      "bPoints": 374.3
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "noah-shaffer",
+      "aWins": 0,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 106.7,
+      "bPoints": 113.7
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "romina-papa",
+      "aWins": 5,
+      "bWins": 15,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 2340.78,
+      "bPoints": 2465.88
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "rosada-plummer",
+      "aWins": 4,
+      "bWins": 15,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 2,
+      "aPoints": 1933.9,
+      "bPoints": 2127.46
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "dan-plummer",
+      "aWins": 9,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2244.96,
+      "bPoints": 2105.3
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "tammy-carlson",
+      "aWins": 1,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 148.5,
+      "bPoints": 88.3
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "tammy-carlson",
+      "aWins": 0,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 208.3,
+      "bPoints": 293.1
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "noah-shaffer",
+      "aWins": 10,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 1988.68,
+      "bPoints": 1776.44
+    },
+    {
+      "a": "dan-plummer",
+      "b": "matt-shaffer",
+      "aWins": 9,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 2012.76,
+      "bPoints": 2113.08
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "joanna-sullivan",
+      "aWins": 10,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 1911.0,
+      "bPoints": 1743.08
+    },
+    {
+      "a": "romina-papa",
+      "b": "rosada-plummer",
+      "aWins": 4,
+      "bWins": 13,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 1,
+      "aPoints": 1876.42,
+      "bPoints": 2140.54
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "romina-papa",
+      "aWins": 11,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2072.5,
+      "bPoints": 1862.38
+    },
+    {
+      "a": "benjamin-peterson",
+      "b": "dan-plummer",
+      "aWins": 1,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 146.6,
+      "bPoints": 94.7
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "tammy-carlson",
+      "aWins": 1,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 90.5,
+      "bPoints": 80.2
+    },
+    {
+      "a": "noah-shaffer",
+      "b": "rosada-plummer",
+      "aWins": 13,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 2,
+      "bPlayoffWins": 0,
+      "aPoints": 2635.16,
+      "bPoints": 2596.12
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "diego-papa",
+      "aWins": 12,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2634.58,
+      "bPoints": 2615.28
+    },
+    {
+      "a": "dan-plummer",
+      "b": "dave-beck",
+      "aWins": 13,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 2892.0,
+      "bPoints": 2845.36
+    },
+    {
+      "a": "diego-papa",
+      "b": "joanna-sullivan",
+      "aWins": 10,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2043.9,
+      "bPoints": 1923.36
+    },
+    {
+      "a": "dave-beck",
+      "b": "noah-shaffer",
+      "aWins": 14,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2240.4,
+      "bPoints": 2057.86
+    },
+    {
+      "a": "dave-beck",
+      "b": "joanna-sullivan",
+      "aWins": 16,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2219.04,
+      "bPoints": 1975.72
+    },
+    {
+      "a": "diego-papa",
+      "b": "rosada-plummer",
+      "aWins": 11,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1889.4,
+      "bPoints": 1761.26
+    },
+    {
+      "a": "dave-beck",
+      "b": "rosada-plummer",
+      "aWins": 7,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2008.18,
+      "bPoints": 2071.0
+    },
+    {
+      "a": "diego-papa",
+      "b": "matt-shaffer",
+      "aWins": 11,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 2,
+      "aPoints": 2513.86,
+      "bPoints": 2746.6
+    },
+    {
+      "a": "diego-papa",
+      "b": "matt-sullivan",
+      "aWins": 11,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 2285.32,
+      "bPoints": 2425.4
+    },
+    {
+      "a": "dave-beck",
+      "b": "romina-papa",
+      "aWins": 9,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1610.08,
+      "bPoints": 1655.9
+    },
+    {
+      "a": "diego-papa",
+      "b": "romina-papa",
+      "aWins": 10,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 2053.74,
+      "bPoints": 2095.04
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "dave-beck",
+      "aWins": 10,
+      "bWins": 12,
+      "ties": 0,
+      "aPlayoffWins": 2,
+      "bPlayoffWins": 1,
+      "aPoints": 2669.44,
+      "bPoints": 2758.36
+    },
+    {
+      "a": "dave-beck",
+      "b": "matt-shaffer",
+      "aWins": 9,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2077.18,
+      "bPoints": 2127.24
+    },
+    {
+      "a": "diego-papa",
+      "b": "noah-shaffer",
+      "aWins": 12,
+      "bWins": 11,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2531.88,
+      "bPoints": 2692.28
+    },
+    {
+      "a": "dave-beck",
+      "b": "diego-papa",
+      "aWins": 11,
+      "bWins": 9,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2460.8,
+      "bPoints": 2413.1
+    },
+    {
+      "a": "dan-plummer",
+      "b": "diego-papa",
+      "aWins": 9,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 2100.22,
+      "bPoints": 2213.14
+    },
+    {
+      "a": "dave-beck",
+      "b": "matt-sullivan",
+      "aWins": 9,
+      "bWins": 10,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 2183.32,
+      "bPoints": 2265.14
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "tera-gallegos",
+      "aWins": 10,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1355.86,
+      "bPoints": 1241.42
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "matt-sullivan",
+      "aWins": 4,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 833.3,
+      "bPoints": 941.2
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "kelly-mcclean",
+      "aWins": 6,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 959.72,
+      "bPoints": 936.36
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "tera-gallegos",
+      "aWins": 6,
+      "bWins": 8,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 1358.52,
+      "bPoints": 1485.48
+    },
+    {
+      "a": "dave-beck",
+      "b": "tera-gallegos",
+      "aWins": 7,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 963.98,
+      "bPoints": 868.66
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "kelly-mcclean",
+      "aWins": 1,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 617.8,
+      "bPoints": 665.8
+    },
+    {
+      "a": "dave-beck",
+      "b": "kelly-mcclean",
+      "aWins": 7,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1082.16,
+      "bPoints": 910.54
+    },
+    {
+      "a": "noah-shaffer",
+      "b": "tera-gallegos",
+      "aWins": 6,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 1212.62,
+      "bPoints": 1047.7
+    },
+    {
+      "a": "diego-papa",
+      "b": "tera-gallegos",
+      "aWins": 2,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 714.96,
+      "bPoints": 712.14
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "noah-shaffer",
+      "aWins": 0,
+      "bWins": 7,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 622.02,
+      "bPoints": 762.02
+    },
+    {
+      "a": "rosada-plummer",
+      "b": "tera-gallegos",
+      "aWins": 8,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1304.36,
+      "bPoints": 1159.82
+    },
+    {
+      "a": "diego-papa",
+      "b": "kelly-mcclean",
+      "aWins": 3,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 508.86,
+      "bPoints": 453.42
+    },
+    {
+      "a": "romina-papa",
+      "b": "tera-gallegos",
+      "aWins": 8,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1188.48,
+      "bPoints": 1132.6
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "rosada-plummer",
+      "aWins": 2,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 472.38,
+      "bPoints": 495.24
+    },
+    {
+      "a": "dan-plummer",
+      "b": "tera-gallegos",
+      "aWins": 3,
+      "bWins": 5,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 815.7,
+      "bPoints": 816.46
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "romina-papa",
+      "aWins": 0,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 584.0,
+      "bPoints": 748.56
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "tera-gallegos",
+      "aWins": 8,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 1059.02,
+      "bPoints": 854.48
+    },
+    {
+      "a": "dan-plummer",
+      "b": "kelly-mcclean",
+      "aWins": 2,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 543.68,
+      "bPoints": 583.6
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "tera-gallegos",
+      "aWins": 7,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 923.62,
+      "bPoints": 871.52
+    },
+    {
+      "a": "kelly-mcclean",
+      "b": "matt-shaffer",
+      "aWins": 1,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 459.08,
+      "bPoints": 511.56
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "tera-gallegos",
+      "aWins": 3,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 695.52,
+      "bPoints": 660.86
+    },
+    {
+      "a": "joanna-sullivan",
+      "b": "mitchell-sullivan",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 367.76,
+      "bPoints": 323.9
+    },
+    {
+      "a": "matt-sullivan",
+      "b": "mitchell-sullivan",
+      "aWins": 0,
+      "bWins": 6,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 1,
+      "aPoints": 594.38,
+      "bPoints": 772.46
+    },
+    {
+      "a": "dan-plummer",
+      "b": "mitchell-sullivan",
+      "aWins": 3,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 367.26,
+      "bPoints": 407.94
+    },
+    {
+      "a": "mitchell-sullivan",
+      "b": "rosada-plummer",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 362.98,
+      "bPoints": 298.58
+    },
+    {
+      "a": "andrew-shaffer",
+      "b": "mitchell-sullivan",
+      "aWins": 3,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 1,
+      "bPlayoffWins": 0,
+      "aPoints": 684.88,
+      "bPoints": 641.94
+    },
+    {
+      "a": "mitchell-sullivan",
+      "b": "noah-shaffer",
+      "aWins": 3,
+      "bWins": 4,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 856.36,
+      "bPoints": 952.3
+    },
+    {
+      "a": "matt-shaffer",
+      "b": "mitchell-sullivan",
+      "aWins": 2,
+      "bWins": 1,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 339.4,
+      "bPoints": 320.46
+    },
+    {
+      "a": "mitchell-sullivan",
+      "b": "romina-papa",
+      "aWins": 1,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 272.02,
+      "bPoints": 323.46
+    },
+    {
+      "a": "dave-beck",
+      "b": "mitchell-sullivan",
+      "aWins": 2,
+      "bWins": 3,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 509.38,
+      "bPoints": 478.72
+    },
+    {
+      "a": "diego-papa",
+      "b": "mitchell-sullivan",
+      "aWins": 1,
+      "bWins": 2,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 273.6,
+      "bPoints": 320.6
+    },
+    {
+      "a": "mitchell-sullivan",
+      "b": "tera-gallegos",
+      "aWins": 2,
+      "bWins": 0,
+      "ties": 0,
+      "aPlayoffWins": 0,
+      "bPlayoffWins": 0,
+      "aPoints": 255.2,
+      "bPoints": 188.32
+    }
+  ]
+};
+
+const ALL_EXHIBITS = [...DATA.leagues, DATA.master];
+const STORAGE_KEY = 'hof_unlocked_exhibits_v1';
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+function loadUnlocked() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveUnlocked(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function getManager(id) {
+  return DATA.managers.find(m => m.id === id) || null;
+}
+function leagueSport(leagueId) {
+  const l = DATA.leagues.find(l => l.id === leagueId);
+  return l ? l.sport : null;
+}
+function isDualThreat(managerId) {
+  const champRows = DATA.stats.filter(s => s.managerId === managerId && s.championships > 0);
+  const sports = new Set(champRows.map(s => leagueSport(s.league)));
+  return sports.has('Football') && sports.has('Baseball');
+}
+function computeStandings(exhibitId, includeAlumni) {
+  let rows;
+  if (exhibitId === 'master') {
+    rows = DATA.managers.map(m => {
+      const statRows = DATA.stats.filter(s => s.managerId === m.id);
+      if (statRows.length === 0) return null;
+      const agg = statRows.reduce((acc, s) => ({
+        wins: acc.wins + s.wins,
+        losses: acc.losses + s.losses,
+        ties: acc.ties + s.ties,
+        playoffWins: acc.playoffWins + s.playoffWins,
+        playoffLosses: acc.playoffLosses + s.playoffLosses,
+        championships: acc.championships + s.championships,
+        seasonsActive: acc.seasonsActive + s.seasonsActive,
+        active: acc.active || s.active,
+      }), { wins: 0, losses: 0, ties: 0, playoffWins: 0, playoffLosses: 0, championships: 0, seasonsActive: 0, active: false });
+      return { managerId: m.id, name: m.name, ...agg };
+    }).filter(Boolean);
+  } else {
+    rows = DATA.stats.filter(s => s.league === exhibitId).map(s => {
+      const m = getManager(s.managerId);
+      return {
+        managerId: s.managerId, name: m.name,
+        wins: s.wins, losses: s.losses, ties: s.ties,
+        playoffWins: s.playoffWins, playoffLosses: s.playoffLosses,
+        championships: s.championships, seasonsActive: s.seasonsActive, active: s.active,
+      };
+    });
+  }
+  if (!includeAlumni) rows = rows.filter(r => r.active);
+  rows.forEach(r => {
+    const totalGames = r.wins + r.losses + r.ties;
+    r.winPct = totalGames ? (r.wins + 0.5 * r.ties) / totalGames : 0;
+    const totalPlayoff = r.playoffWins + r.playoffLosses;
+    r.playoffWinPct = totalPlayoff ? r.playoffWins / totalPlayoff : 0;
+    r.isDualThreat = isDualThreat(r.managerId);
+  });
+  rows.sort((a, b) => b.winPct - a.winPct);
+  rows.forEach((r, i) => { r.rank = i + 1; });
+  return rows;
+}
+function getH2H(aId, bId) {
+  const entry = DATA.h2h.find(h => (h.a === aId && h.b === bId) || (h.a === bId && h.b === aId));
+  if (!entry) return null;
+  if (entry.a === aId) return entry;
+  return {
+    a: aId, b: bId,
+    aWins: entry.bWins, bWins: entry.aWins, ties: entry.ties,
+    aPlayoffWins: entry.bPlayoffWins, bPlayoffWins: entry.aPlayoffWins,
+    aPoints: entry.bPoints, bPoints: entry.aPoints,
+  };
+}
+function getRivals(managerId) {
+  let nemesis = null, nemesisLosses = -1, victim = null, victimWins = -1;
+  DATA.h2h.forEach(h => {
+    let oppId, myWins, myLosses;
+    if (h.a === managerId) { oppId = h.b; myWins = h.aWins; myLosses = h.bWins; }
+    else if (h.b === managerId) { oppId = h.a; myWins = h.bWins; myLosses = h.aWins; }
+    else return;
+    if (myLosses > nemesisLosses) { nemesisLosses = myLosses; nemesis = oppId; }
+    if (myWins > victimWins) { victimWins = myWins; victim = oppId; }
+  });
+  return {
+    nemesis: nemesis ? getManager(nemesis) : null, nemesisLosses,
+    victim: victim ? getManager(victim) : null, victimWins,
+  };
+}
+function pct(n) { return (n * 100).toFixed(1) + '%'; }
+function managersForExhibit(exhibitId) {
+  if (exhibitId === 'master') return DATA.managers;
+  const ids = new Set(DATA.stats.filter(s => s.league === exhibitId).map(s => s.managerId));
+  return DATA.managers.filter(m => ids.has(m.id));
+}
+
+/* =========================================================
+   SMALL UI PIECES
+   ========================================================= */
+function TrophyCount({ count }) {
+  if (count <= 0) return <span className="text-amber-100/30">—</span>;
+  const shown = Math.min(count, 5);
+  return (
+    <span className="whitespace-nowrap">
+      <span>{'🏆'.repeat(shown)}</span>
+      {count > 5 && <span className="text-amber-300 ml-1">x{count}</span>}
+    </span>
+  );
+}
+function RankBadge({ rank }) {
+  if (rank === 1) return <span title="Hall of Fame Inductee" className="text-lg">👑</span>;
+  if (rank === 2) return <span className="text-lg">🥈</span>;
+  if (rank === 3) return <span className="text-lg">🥉</span>;
+  return <span className="text-amber-100/50">#{rank}</span>;
+}
+function Badge({ children, className }) {
+  return (
+    <span className={"inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border " + className}>
+      {children}
+    </span>
+  );
+}
+
+/* =========================================================
+   PIN MODAL
+   ========================================================= */
+function PinModal({ exhibit, onClose, onSuccess }) {
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+
+  function submit(e) {
+    e.preventDefault();
+    if (value === exhibit.pin) {
+      onSuccess(exhibit);
+    } else {
+      setError('Incorrect Access Code');
+      setValue('');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+      <div className="w-full max-w-sm plaque-texture border border-amber-400/40 rounded-lg shadow-gold-glow-lg p-6 relative">
+        <button onClick={onClose} className="absolute top-3 right-3 text-amber-200/50 hover:text-amber-200 text-xl leading-none">×</button>
+        <div className="text-center mb-5">
+          <div className="text-3xl mb-2">🔒</div>
+          <h2 className="font-serif text-xl text-amber-200 tracking-wide">Enter Vault Access Code</h2>
+          <p className="text-amber-100/50 text-sm mt-1">{exhibit.name}</p>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <input
+            autoFocus
+            type="password"
+            inputMode="numeric"
+            maxLength="4"
+            value={value}
+            onChange={e => { setValue(e.target.value.replace(/\D/g, '')); setError(''); }}
+            className="w-full text-center tracking-[1em] text-2xl bg-black/50 border border-amber-400/40 rounded-md py-3 text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+            placeholder="••••"
+          />
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          <button
+            type="submit"
+            disabled={value.length !== 4}
+            className="w-full bg-gradient-to-b from-amber-400 to-amber-600 disabled:opacity-30 disabled:cursor-not-allowed text-obsidian font-serif font-bold py-2.5 rounded-md tracking-wide hover:brightness-110 transition"
+          >
+            Unlock Exhibit
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   LOBBY
+   ========================================================= */
+function Lobby({ unlocked, onSelect }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-16">
+      <div className="text-center mb-14">
+        <div className="text-5xl mb-4">🏛️</div>
+        <h1 className="font-serif text-4xl md:text-5xl gold-shimmer-text font-bold tracking-wide">
+          Fantasy Sports Hall of Fame & Museum
+        </h1>
+        <p className="text-amber-100/40 mt-3 tracking-wide uppercase text-xs">Est. — where legends are enshrined and rivalries are immortalized</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {ALL_EXHIBITS.map(ex => {
+          const done = unlocked.includes(ex.id);
+          const isMaster = ex.id === 'master';
+          return (
+            <button
+              key={ex.id}
+              onClick={() => onSelect(ex)}
+              className={
+                "vault-card text-left plaque-texture border rounded-lg p-6 relative overflow-hidden " +
+                (isMaster
+                  ? "border-amber-300/60 shadow-gold-glow-lg md:col-span-1 "
+                  : "border-amber-400/25 shadow-gold-glow ") +
+                "hover:border-amber-300/70"
+              }
+            >
+              <div className="flex items-start justify-between mb-6">
+                <span className="text-3xl">{isMaster ? '👑' : (ex.sport === 'Baseball' ? '⚾' : '🏈')}</span>
+                {done && <Badge className="border-emerald-400/40 text-emerald-300 bg-emerald-400/10">Unlocked</Badge>}
+              </div>
+              <h3 className="font-serif text-lg text-amber-100 mb-1">{ex.name}</h3>
+              <p className="text-amber-100/40 text-xs mb-6">
+                {isMaster ? 'Master VIP Key — unlocks every exhibit' : ex.sport}
+              </p>
+              <div className="flex items-center gap-2 text-amber-300/70 text-sm">
+                <span>{done ? 'Enter Exhibit' : 'Enter Vault Access Code'}</span>
+                <span>→</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   STANDINGS TABLE
+   ========================================================= */
+function StandingsTable({ rows, onSelectManager }) {
+  if (rows.length === 0) {
+    return <p className="text-amber-100/40 text-center py-10 italic">No managers to display for this filter.</p>;
+  }
+  const cols = ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Playoff (W-L)', 'Playoff Win %', 'Seasons'];
+  return (
+    <div className="overflow-x-auto rounded-lg border border-amber-400/20 shadow-gold-glow">
+      <table className="min-w-full text-sm">
+        <thead>
+          <tr className="bg-black/40 text-amber-300/70 uppercase text-[11px] tracking-wider">
+            {cols.map(c => <th key={c} className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap">{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => (
+            <tr key={r.managerId} className="border-t border-amber-400/10 hover:bg-amber-400/5 transition">
+              <td className="px-4 py-3"><RankBadge rank={r.rank} /></td>
+              <td className="px-4 py-3">
+                <button onClick={() => onSelectManager(r.managerId)} className="font-serif text-amber-100 hover:text-amber-300 hover:underline decoration-amber-400/50 underline-offset-4 text-left">
+                  {r.name}
+                </button>
+                <div className="flex gap-1 mt-1">
+                  {r.rank === 1 && <Badge className="border-amber-300/50 text-amber-200 bg-amber-400/10">HOF Inductee</Badge>}
+                  {r.isDualThreat && <Badge className="border-fuchsia-300/40 text-fuchsia-200 bg-fuchsia-400/10">Dual-Threat</Badge>}
+                  {!r.active && <Badge className="border-amber-100/20 text-amber-100/40 bg-white/5">Alumni</Badge>}
+                </div>
+              </td>
+              <td className="px-4 py-3"><TrophyCount count={r.championships} /></td>
+              <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.wins}-{r.losses}-{r.ties}</td>
+              <td className="px-4 py-3 text-amber-200 font-semibold">{pct(r.winPct)}</td>
+              <td className="px-4 py-3 text-amber-100/80 whitespace-nowrap">{r.playoffWins}-{r.playoffLosses}</td>
+              <td className="px-4 py-3 text-amber-100/80">{pct(r.playoffWinPct)}</td>
+              <td className="px-4 py-3 text-amber-100/80">{r.seasonsActive}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* =========================================================
+   RIVALRY TOOL
+   ========================================================= */
+function RivalryTool({ managers }) {
+  const [aId, setAId] = useState('');
+  const [bId, setBId] = useState('');
+  const h2h = (aId && bId && aId !== bId) ? getH2H(aId, bId) : null;
+  const mA = getManager(aId), mB = getManager(bId);
+
+  function Select({ value, onChange, exclude }) {
+    return (
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-black/50 border border-amber-400/30 rounded-md px-3 py-2 text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+      >
+        <option value="">Select manager…</option>
+        {managers.filter(m => m.id !== exclude).map(m => (
+          <option key={m.id} value={m.id}>{m.name}</option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <div className="mt-10">
+      <h3 className="font-serif text-xl text-amber-200 mb-4 flex items-center gap-2">⚔️ Head-to-Head Rivalry Comparison</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-xl">
+        <Select value={aId} onChange={setAId} exclude={bId} />
+        <Select value={bId} onChange={setBId} exclude={aId} />
+      </div>
+
+      {(!aId || !bId) && <p className="text-amber-100/40 italic text-sm">Select two managers to compare their rivalry.</p>}
+      {aId && bId && aId === bId && <p className="text-red-400 text-sm">Choose two different managers.</p>}
+
+      {h2h && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
+          {[
+            { m: mA, wins: h2h.aWins, losses: h2h.bWins, pw: h2h.aPlayoffWins, pl: h2h.bPlayoffWins, pts: h2h.aPoints },
+            { m: mB, wins: h2h.bWins, losses: h2h.aWins, pw: h2h.bPlayoffWins, pl: h2h.aPlayoffWins, pts: h2h.bPoints },
+          ].map((side, i) => {
+            const total = side.wins + side.losses;
+            const winPct = total ? side.wins / total : 0;
+            return (
+              <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
+                <h4 className="font-serif text-lg text-amber-100 mb-3">{side.m.name}</h4>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between"><dt className="text-amber-100/50">Overall H2H Record</dt><dd className="text-amber-200 font-semibold">{side.wins}-{side.losses}</dd></div>
+                  <div className="flex justify-between"><dt className="text-amber-100/50">H2H Win %</dt><dd className="text-amber-200 font-semibold">{pct(winPct)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-amber-100/50">Playoff H2H</dt><dd className="text-amber-200 font-semibold">{side.pw}-{side.pl}</dd></div>
+                  <div className="flex justify-between"><dt className="text-amber-100/50">Total Points Scored</dt><dd className="text-amber-200 font-semibold">{side.pts.toLocaleString()}</dd></div>
+                </dl>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {aId && bId && aId !== bId && !h2h && (
+        <p className="text-amber-100/40 italic text-sm">These managers have never faced each other.</p>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   MANAGER PLAQUE MODAL
+   ========================================================= */
+function ManagerPlaqueModal({ managerId, onClose }) {
+  const m = getManager(managerId);
+  if (!m) return null;
+  const statRows = DATA.stats.filter(s => s.managerId === managerId);
+  const totalChampionships = statRows.reduce((a, s) => a + s.championships, 0);
+  const dual = isDualThreat(managerId);
+  const { nemesis, nemesisLosses, victim, victimWins } = getRivals(managerId);
+  const leagueNames = statRows.map(s => DATA.leagues.find(l => l.id === s.league).name);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
+      <div className="w-full max-w-lg plaque-texture border-2 border-amber-400/50 rounded-lg shadow-gold-glow-lg p-7 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 text-amber-200/50 hover:text-amber-200 text-xl leading-none">×</button>
+
+        <div className="text-center mb-6 border-b border-amber-400/20 pb-6">
+          <div className="text-3xl mb-2">🏅</div>
+          <h2 className="font-serif text-2xl text-amber-100">{m.name}</h2>
+          <p className="text-amber-100/40 text-xs mt-1 uppercase tracking-wide">{leagueNames.join(' · ')}</p>
+          <div className="flex justify-center gap-2 mt-3">
+            {dual && <Badge className="border-fuchsia-300/40 text-fuchsia-200 bg-fuchsia-400/10">Dual-Threat</Badge>}
+            <Badge className="border-amber-300/50 text-amber-200 bg-amber-400/10"><TrophyCount count={totalChampionships} /> Titles</Badge>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="bg-black/30 border border-amber-400/20 rounded-md p-4">
+            <p className="text-amber-100/40 text-[11px] uppercase tracking-wide mb-1">Best Single Season</p>
+            <p className="font-serif text-amber-200 text-lg">{m.bestSeason.record}</p>
+            <p className="text-amber-100/50 text-xs mt-1">{m.bestSeason.year} · {DATA.leagues.find(l => l.id === m.bestSeason.league).name}</p>
+          </div>
+          <div className="bg-black/30 border border-amber-400/20 rounded-md p-4">
+            <p className="text-amber-100/40 text-[11px] uppercase tracking-wide mb-1">Career Championships</p>
+            <p className="font-serif text-amber-200 text-lg"><TrophyCount count={totalChampionships} /></p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-red-950/20 border border-red-400/20 rounded-md p-4">
+            <p className="text-red-300/70 text-[11px] uppercase tracking-wide mb-1">😈 Nemesis</p>
+            {nemesis ? (
+              <React.Fragment>
+                <p className="font-serif text-red-200 text-lg">{nemesis.name}</p>
+                <p className="text-red-200/50 text-xs mt-1">{nemesisLosses} career losses suffered</p>
+              </React.Fragment>
+            ) : <p className="text-amber-100/30 text-sm italic">No rivals recorded</p>}
+          </div>
+          <div className="bg-emerald-950/20 border border-emerald-400/20 rounded-md p-4">
+            <p className="text-emerald-300/70 text-[11px] uppercase tracking-wide mb-1">🎯 Victim</p>
+            {victim ? (
+              <React.Fragment>
+                <p className="font-serif text-emerald-200 text-lg">{victim.name}</p>
+                <p className="text-emerald-200/50 text-xs mt-1">{victimWins} career wins earned</p>
+              </React.Fragment>
+            ) : <p className="text-amber-100/30 text-sm italic">No rivals recorded</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   EXHIBIT VIEW
+   ========================================================= */
+function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager }) {
+  const rows = useMemo(() => computeStandings(exhibit.id, includeAlumni), [exhibit.id, includeAlumni]);
+  const managers = managersForExhibit(exhibit.id);
+  const isMaster = exhibit.id === 'master';
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-10">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        <div>
+          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-1">{isMaster ? 'Master Exhibit' : exhibit.sport + ' League'}</p>
+          <h2 className="font-serif text-3xl text-amber-100">{exhibit.name}</h2>
+        </div>
+        <label className="flex items-center gap-3 bg-black/30 border border-amber-400/20 rounded-full px-4 py-2 select-none cursor-pointer">
+          <span className={"text-xs " + (!includeAlumni ? "text-amber-200 font-semibold" : "text-amber-100/40")}>Active Members</span>
+          <span
+            onClick={() => setIncludeAlumni(!includeAlumni)}
+            className={"relative inline-flex h-5 w-9 items-center rounded-full transition " + (includeAlumni ? "bg-amber-500" : "bg-amber-100/20")}
+          >
+            <span className={"inline-block h-4 w-4 transform rounded-full bg-obsidian transition " + (includeAlumni ? "translate-x-5" : "translate-x-1")} />
+          </span>
+          <span className={"text-xs " + (includeAlumni ? "text-amber-200 font-semibold" : "text-amber-100/40")}>All-Time (Alumni)</span>
+        </label>
+      </div>
+
+      <StandingsTable rows={rows} onSelectManager={onSelectManager} />
+      <RivalryTool managers={managers} />
+    </div>
+  );
+}
+
+/* =========================================================
+   HEADER / TABS
+   ========================================================= */
+function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
+  const tabs = ALL_EXHIBITS.filter(ex => unlocked.includes(ex.id));
+  return (
+    <div className="sticky top-0 z-40 bg-obsidian/90 backdrop-blur border-b border-amber-400/20">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <button onClick={onGoLobby} className="font-serif text-amber-200 text-sm tracking-wide flex items-center gap-2 hover:text-amber-100">
+          🏛️ <span className="hidden sm:inline">Hall of Fame</span>
+        </button>
+        <div className="flex items-center gap-1 overflow-x-auto">
+          {tabs.map(ex => (
+            <button
+              key={ex.id}
+              onClick={() => onSwitch(ex.id)}
+              className={
+                "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
+                (currentId === ex.id
+                  ? "bg-amber-400/15 border-amber-400/50 text-amber-200"
+                  : "border-transparent text-amber-100/50 hover:text-amber-200 hover:border-amber-400/20")
+              }
+            >
+              {ex.id === 'master' ? '👑 ' : ''}{ex.name}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onLock}
+          className="text-xs border border-amber-400/30 text-amber-200/70 hover:text-amber-100 hover:border-amber-400/60 rounded-md px-3 py-1.5 whitespace-nowrap"
+        >
+          🔒 Lock / Change Vault
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   APP
+   ========================================================= */
+function App() {
+  const [unlocked, setUnlocked] = useState(loadUnlocked());
+  const [view, setView] = useState(() => {
+    const u = loadUnlocked();
+    if (u.length === 0) return null;
+    return u.includes('master') ? 'master' : u[0];
+  });
+  const [pinTarget, setPinTarget] = useState(null);
+  const [includeAlumni, setIncludeAlumni] = useState(false);
+  const [selectedManager, setSelectedManager] = useState(null);
+
+  function handleUnlockSuccess(exhibit) {
+    let next;
+    if (exhibit.id === 'master') {
+      next = Array.from(new Set([...unlocked, ...ALL_EXHIBITS.map(e => e.id)]));
+    } else {
+      next = Array.from(new Set([...unlocked, exhibit.id]));
+    }
+    setUnlocked(next);
+    saveUnlocked(next);
+    setView(exhibit.id);
+    setPinTarget(null);
+  }
+
+  function handleSelectExhibit(exhibit) {
+    if (unlocked.includes(exhibit.id)) {
+      setView(exhibit.id);
+    } else {
+      setPinTarget(exhibit);
+    }
+  }
+
+  function handleLock() {
+    localStorage.removeItem(STORAGE_KEY);
+    setUnlocked([]);
+    setView(null);
+  }
+
+  const currentExhibit = ALL_EXHIBITS.find(e => e.id === view) || null;
+
+  return (
+    <div className="min-h-screen">
+      {unlocked.length > 0 && (
+        <Header
+          unlocked={unlocked}
+          currentId={view}
+          onSwitch={setView}
+          onLock={handleLock}
+          onGoLobby={() => setView(null)}
+        />
+      )}
+
+      {(!view || !currentExhibit) ? (
+        <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} />
+      ) : (
+        <ExhibitView
+          exhibit={currentExhibit}
+          includeAlumni={includeAlumni}
+          setIncludeAlumni={setIncludeAlumni}
+          onSelectManager={setSelectedManager}
+        />
+      )}
+
+      {pinTarget && (
+        <PinModal
+          exhibit={pinTarget}
+          onClose={() => setPinTarget(null)}
+          onSuccess={handleUnlockSuccess}
+        />
+      )}
+
+      {selectedManager && (
+        <ManagerPlaqueModal
+          managerId={selectedManager}
+          onClose={() => setSelectedManager(null)}
+        />
+      )}
+
+      <footer className="text-center text-amber-100/20 text-xs py-10">
+        Fantasy Sports Hall of Fame & Museum — Est. this season · All records are self-contained, no server required.
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

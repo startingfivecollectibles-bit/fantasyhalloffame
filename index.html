@@ -3667,6 +3667,17 @@ function RivalryTool({ managers }) {
   const [bId, setBId] = useState('');
   const h2h = (aId && bId && aId !== bId) ? getH2H(aId, bId) : null;
   const mA = getManager(aId), mB = getManager(bId);
+  const validPair = aId && bId && aId !== bId;
+
+  function careerTotals(managerId) {
+    const rows = DATA.stats.filter(s => s.managerId === managerId);
+    return rows.reduce((acc, s) => ({
+      championships: acc.championships + s.championships,
+      wins: acc.wins + s.wins,
+      losses: acc.losses + s.losses,
+      ties: acc.ties + s.ties,
+    }), { championships: 0, wins: 0, losses: 0, ties: 0 });
+  }
 
   function Select({ value, onChange, exclude }) {
     return (
@@ -3694,30 +3705,57 @@ function RivalryTool({ managers }) {
       {(!aId || !bId) && <p className="text-amber-100/40 italic text-sm">Select two managers to compare their rivalry.</p>}
       {aId && bId && aId === bId && <p className="text-red-400 text-sm">Choose two different managers.</p>}
 
+      {validPair && (
+        <div className="mb-8">
+          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-3">Career Comparison — All Sports</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
+            {[mA, mB].map((m, i) => {
+              const totals = careerTotals(m.id);
+              const gp = totals.wins + totals.losses + totals.ties;
+              const wp = gp ? (totals.wins + 0.5 * totals.ties) / gp : 0;
+              return (
+                <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
+                  <h4 className="font-serif text-lg text-amber-100 mb-3">{m.name}</h4>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Championships (All Leagues)</dt><dd className="text-amber-200 font-semibold"><TrophyCount count={totals.championships} /></dd></div>
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Career Record (All Leagues)</dt><dd className="text-amber-200 font-semibold">{totals.wins}-{totals.losses}-{totals.ties}</dd></div>
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Career Win %</dt><dd className="text-amber-200 font-semibold">{pct(wp)}</dd></div>
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-amber-100/30 text-xs mt-3 italic">Combines every league each manager plays in, including baseball — which has no game-by-game head-to-head log, so it's reflected here as career totals rather than direct matchups.</p>
+        </div>
+      )}
+
       {h2h && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
-          {[
-            { m: mA, wins: h2h.aWins, losses: h2h.bWins, pw: h2h.aPlayoffWins, pl: h2h.bPlayoffWins, pts: h2h.aPoints },
-            { m: mB, wins: h2h.bWins, losses: h2h.aWins, pw: h2h.bPlayoffWins, pl: h2h.aPlayoffWins, pts: h2h.bPoints },
-          ].map((side, i) => {
-            const total = side.wins + side.losses;
-            const winPct = total ? side.wins / total : 0;
-            return (
-              <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
-                <h4 className="font-serif text-lg text-amber-100 mb-3">{side.m.name}</h4>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between"><dt className="text-amber-100/50">Overall H2H Record</dt><dd className="text-amber-200 font-semibold">{side.wins}-{side.losses}</dd></div>
-                  <div className="flex justify-between"><dt className="text-amber-100/50">H2H Win %</dt><dd className="text-amber-200 font-semibold">{pct(winPct)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-amber-100/50">Playoff H2H</dt><dd className="text-amber-200 font-semibold">{side.pw}-{side.pl}</dd></div>
-                  <div className="flex justify-between"><dt className="text-amber-100/50">Total Points Scored</dt><dd className="text-amber-200 font-semibold">{side.pts.toLocaleString()}</dd></div>
-                </dl>
-              </div>
-            );
-          })}
+        <div>
+          <p className="text-amber-300/50 text-xs uppercase tracking-widest mb-3">Direct Head-to-Head — Football</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
+            {[
+              { m: mA, wins: h2h.aWins, losses: h2h.bWins, pw: h2h.aPlayoffWins, pl: h2h.bPlayoffWins, pts: h2h.aPoints },
+              { m: mB, wins: h2h.bWins, losses: h2h.aWins, pw: h2h.bPlayoffWins, pl: h2h.aPlayoffWins, pts: h2h.bPoints },
+            ].map((side, i) => {
+              const total = side.wins + side.losses;
+              const winPct = total ? side.wins / total : 0;
+              return (
+                <div key={i} className="plaque-texture border border-amber-400/30 rounded-lg p-5 shadow-gold-glow">
+                  <h4 className="font-serif text-lg text-amber-100 mb-3">{side.m.name}</h4>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Overall H2H Record</dt><dd className="text-amber-200 font-semibold">{side.wins}-{side.losses}</dd></div>
+                    <div className="flex justify-between"><dt className="text-amber-100/50">H2H Win %</dt><dd className="text-amber-200 font-semibold">{pct(winPct)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Playoff H2H</dt><dd className="text-amber-200 font-semibold">{side.pw}-{side.pl}</dd></div>
+                    <div className="flex justify-between"><dt className="text-amber-100/50">Total Points Scored</dt><dd className="text-amber-200 font-semibold">{side.pts.toLocaleString()}</dd></div>
+                  </dl>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       {aId && bId && aId !== bId && !h2h && (
-        <p className="text-amber-100/40 italic text-sm">These managers have never faced each other.</p>
+        <p className="text-amber-100/40 italic text-sm">These managers have never faced each other in a football matchup.</p>
       )}
     </div>
   );

@@ -3367,7 +3367,7 @@ function computeStandings(exhibitId, includeAlumni) {
   if (exhibitId === 'master') {
     rows = DATA.managers.map(m => {
       const statRows = DATA.stats.filter(s => s.managerId === m.id);
-      if (statRows.length === 0) return null;
+      if (statRows.length < 2) return null; // Master exhibit: only multi-league managers
       const agg = statRows.reduce((acc, s) => ({
         wins: acc.wins + s.wins,
         losses: acc.losses + s.losses,
@@ -3431,7 +3431,12 @@ function getRivals(managerId) {
 }
 function pct(n) { return (n * 100).toFixed(1) + '%'; }
 function managersForExhibit(exhibitId) {
-  if (exhibitId === 'master') return DATA.managers;
+  if (exhibitId === 'master') {
+    // Match the master standings restriction: only managers in 2+ leagues
+    const counts = {};
+    DATA.stats.forEach(s => { counts[s.managerId] = (counts[s.managerId] || 0) + 1; });
+    return DATA.managers.filter(m => (counts[m.id] || 0) >= 2);
+  }
   const ids = new Set(DATA.stats.filter(s => s.league === exhibitId).map(s => s.managerId));
   return DATA.managers.filter(m => ids.has(m.id));
 }
@@ -3568,22 +3573,66 @@ function Lobby({ unlocked, onSelect }) {
    STANDINGS TABLE
    ========================================================= */
 function StandingsTable({ rows, onSelectManager, showPlayoff }) {
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState('desc');
+
   if (rows.length === 0) {
     return <p className="text-amber-100/40 text-center py-10 italic">No managers to display for this filter.</p>;
   }
-  const cols = showPlayoff
-    ? ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Playoff (W-L)', 'Playoff Win %', 'Seasons']
-    : ['Rank', 'Manager', 'Trophies', 'Record (W-L-T)', 'Win %', 'Seasons'];
+
+  const columns = [
+    { key: 'rank', label: 'Rank', accessor: r => r.rank },
+    { key: 'name', label: 'Manager', accessor: r => r.name },
+    { key: 'championships', label: 'Trophies', accessor: r => r.championships },
+    { key: 'wins', label: 'Record (W-L-T)', accessor: r => r.wins },
+    { key: 'winPct', label: 'Win %', accessor: r => r.winPct },
+    ...(showPlayoff ? [
+      { key: 'playoffWins', label: 'Playoff (W-L)', accessor: r => r.playoffWins },
+      { key: 'playoffWinPct', label: 'Playoff Win %', accessor: r => r.playoffWinPct },
+    ] : []),
+    { key: 'seasonsActive', label: 'Seasons', accessor: r => r.seasonsActive },
+  ];
+
+  function handleSort(col) {
+    if (sortKey === col.key) {
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortKey(col.key);
+      setSortDir(col.key === 'name' ? 'asc' : 'desc');
+    }
+  }
+
+  const activeCol = columns.find(c => c.key === sortKey);
+  const displayRows = activeCol
+    ? [...rows].sort((a, b) => {
+        const av = activeCol.accessor(a), bv = activeCol.accessor(b);
+        let cmp;
+        if (typeof av === 'string') cmp = av.localeCompare(bv);
+        else cmp = av - bv;
+        return sortDir === 'asc' ? cmp : -cmp;
+      })
+    : rows; // default: original rank order
+
   return (
     <div className="overflow-x-auto rounded-lg border border-amber-400/20 shadow-gold-glow">
       <table className="min-w-full text-sm">
         <thead>
           <tr className="bg-black/40 text-amber-300/70 uppercase text-[11px] tracking-wider">
-            {cols.map(c => <th key={c} className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap">{c}</th>)}
+            {columns.map(col => (
+              <th
+                key={col.key}
+                onClick={() => handleSort(col)}
+                className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap cursor-pointer select-none hover:text-amber-100 transition"
+                title="Click to sort"
+              >
+                {col.label}
+                {sortKey === col.key && <span className="ml-1 text-amber-400">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {displayRows.map(r => (
             <tr key={r.managerId} className="border-t border-amber-400/10 hover:bg-amber-400/5 transition">
               <td className="px-4 py-3"><RankBadge rank={r.rank} /></td>
               <td className="px-4 py-3">

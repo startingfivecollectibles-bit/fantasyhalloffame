@@ -740,8 +740,8 @@ const DATA = {
       "wins": 135,
       "losses": 85,
       "ties": 0,
-      "playoffWins": 7,
-      "playoffLosses": 3,
+      "playoffWins": 9,
+      "playoffLosses": 8,
       "championships": 3,
       "seasonsActive": 14,
       "active": true
@@ -752,8 +752,8 @@ const DATA = {
       "wins": 116,
       "losses": 102,
       "ties": 0,
-      "playoffWins": 5,
-      "playoffLosses": 5,
+      "playoffWins": 4,
+      "playoffLosses": 7,
       "championships": 3,
       "seasonsActive": 14,
       "active": true
@@ -764,8 +764,8 @@ const DATA = {
       "wins": 112,
       "losses": 102,
       "ties": 0,
-      "playoffWins": 5,
-      "playoffLosses": 5,
+      "playoffWins": 4,
+      "playoffLosses": 7,
       "championships": 2,
       "seasonsActive": 14,
       "active": true
@@ -788,7 +788,7 @@ const DATA = {
       "wins": 1,
       "losses": 12,
       "ties": 0,
-      "playoffWins": 2,
+      "playoffWins": 0,
       "playoffLosses": 0,
       "championships": 0,
       "seasonsActive": 1,
@@ -800,8 +800,8 @@ const DATA = {
       "wins": 4,
       "losses": 9,
       "ties": 0,
-      "playoffWins": 1,
-      "playoffLosses": 1,
+      "playoffWins": 0,
+      "playoffLosses": 0,
       "championships": 0,
       "seasonsActive": 1,
       "active": false
@@ -812,7 +812,7 @@ const DATA = {
       "wins": 96,
       "losses": 121,
       "ties": 0,
-      "playoffWins": 5,
+      "playoffWins": 2,
       "playoffLosses": 5,
       "championships": 1,
       "seasonsActive": 14,
@@ -824,8 +824,8 @@ const DATA = {
       "wins": 122,
       "losses": 96,
       "ties": 0,
-      "playoffWins": 6,
-      "playoffLosses": 3,
+      "playoffWins": 13,
+      "playoffLosses": 4,
       "championships": 4,
       "seasonsActive": 14,
       "active": true
@@ -836,8 +836,8 @@ const DATA = {
       "wins": 113,
       "losses": 108,
       "ties": 0,
-      "playoffWins": 3,
-      "playoffLosses": 7,
+      "playoffWins": 7,
+      "playoffLosses": 5,
       "championships": 0,
       "seasonsActive": 14,
       "active": true
@@ -849,7 +849,7 @@ const DATA = {
       "losses": 138,
       "ties": 0,
       "playoffWins": 3,
-      "playoffLosses": 7,
+      "playoffLosses": 3,
       "championships": 0,
       "seasonsActive": 14,
       "active": true
@@ -860,8 +860,8 @@ const DATA = {
       "wins": 118,
       "losses": 89,
       "ties": 0,
-      "playoffWins": 5,
-      "playoffLosses": 2,
+      "playoffWins": 9,
+      "playoffLosses": 8,
       "championships": 0,
       "seasonsActive": 13,
       "active": true
@@ -872,8 +872,8 @@ const DATA = {
       "wins": 107,
       "losses": 99,
       "ties": 0,
-      "playoffWins": 2,
-      "playoffLosses": 5,
+      "playoffWins": 3,
+      "playoffLosses": 4,
       "championships": 0,
       "seasonsActive": 13,
       "active": true
@@ -884,7 +884,7 @@ const DATA = {
       "wins": 40,
       "losses": 69,
       "ties": 0,
-      "playoffWins": 2,
+      "playoffWins": 1,
       "playoffLosses": 1,
       "championships": 0,
       "seasonsActive": 7,
@@ -908,8 +908,8 @@ const DATA = {
       "wins": 25,
       "losses": 19,
       "ties": 0,
-      "playoffWins": 1,
-      "playoffLosses": 1,
+      "playoffWins": 2,
+      "playoffLosses": 3,
       "championships": 0,
       "seasonsActive": 3,
       "active": false
@@ -4128,6 +4128,9 @@ const DATA = {
         "dropped": []
       }
     ]
+  },
+  "notes": {
+    "football3": "Playoff records reconstructed by hand from ESPN's actual weekly schedule (2015-2025) since ESPN's own playoff flag was missing for most seasons. 2014 playoff results are unknown and excluded - that season's champion is still recorded, just without a playoff win-loss contribution."
   }
 };
 
@@ -4700,6 +4703,45 @@ function ManagerPlaqueModal({ managerId, onClose }) {
           </div>
         </div>
 
+        {statRows.length > 1 && (
+          <div className="mb-6">
+            <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-2">Career By League</p>
+            <div className="overflow-x-auto rounded-lg border border-sky-100">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-sky-50 text-sky-700 uppercase text-[10px] tracking-wider">
+                    <th className="px-3 py-2 text-left font-serif font-normal">League</th>
+                    <th className="px-3 py-2 text-left font-serif font-normal">Record</th>
+                    <th className="px-3 py-2 text-left font-serif font-normal">Win %</th>
+                    <th className="px-3 py-2 text-left font-serif font-normal">Titles</th>
+                    <th className="px-3 py-2 text-left font-serif font-normal">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statRows.map(s => {
+                    const league = DATA.leagues.find(l => l.id === s.league);
+                    const gp = s.wins + s.losses + s.ties;
+                    const wp = gp ? (s.wins + 0.5 * s.ties) / gp : 0;
+                    return (
+                      <tr key={s.league} className="border-t border-slate-100">
+                        <td className="px-3 py-2 text-slate-700">{league ? league.name : s.league}</td>
+                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{s.wins}-{s.losses}-{s.ties}</td>
+                        <td className="px-3 py-2 text-sky-700 font-medium">{pct(wp)}</td>
+                        <td className="px-3 py-2"><TrophyCount count={s.championships} /></td>
+                        <td className="px-3 py-2">
+                          {s.active
+                            ? <Badge className="border-emerald-300 text-emerald-700 bg-emerald-50">Active</Badge>
+                            : <Badge className="border-slate-200 text-slate-400 bg-slate-50">Alumni</Badge>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-sky-50 border border-sky-100 rounded-md p-4">
             <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Best Single Season</p>
@@ -4873,6 +4915,12 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
           <span className={"text-xs " + (includeAlumni ? "text-sky-700 font-semibold" : "text-slate-400")}>All-Time (Alumni)</span>
         </label>
       </div>
+
+      {DATA.notes && DATA.notes[exhibit.id] && (
+        <p className="text-slate-400 text-xs italic mb-4 bg-sky-50 border border-sky-100 rounded-md px-3 py-2">
+          ℹ️ {DATA.notes[exhibit.id]}
+        </p>
+      )}
 
       <StandingsTable rows={rows} onSelectManager={onSelectManager} showPlayoff={showPlayoff} />
       {!isMaster && <RecordsAndSuperlatives exhibitId={exhibit.id} />}

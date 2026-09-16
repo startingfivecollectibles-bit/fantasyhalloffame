@@ -125,7 +125,8 @@ const DATA = {
   "master": {
     "id": "master",
     "name": "Master All-Time Leaderboard",
-    "pin": "9999"
+    "pin": "9999",
+    "viewerPin": "5555"
   },
   "managers": [
     {
@@ -4475,7 +4476,9 @@ function PinModal({ exhibit, onClose, onSuccess }) {
   function submit(e) {
     e.preventDefault();
     if (value === exhibit.pin) {
-      onSuccess(exhibit);
+      onSuccess(exhibit, 'all');
+    } else if (exhibit.viewerPin && value === exhibit.viewerPin) {
+      onSuccess(exhibit, 'single');
     } else {
       setError('Incorrect Access Code');
       setValue('');
@@ -5185,9 +5188,9 @@ function App() {
   const [includeAlumni, setIncludeAlumni] = useState(false);
   const [selectedManager, setSelectedManager] = useState(null);
 
-  function handleUnlockSuccess(exhibit) {
+  function handleUnlockSuccess(exhibit, mode) {
     let next;
-    if (exhibit.id === 'master') {
+    if (exhibit.id === 'master' && mode === 'all') {
       next = Array.from(new Set([...unlocked, ...ALL_EXHIBITS.map(e => e.id)]));
     } else {
       next = Array.from(new Set([...unlocked, exhibit.id]));

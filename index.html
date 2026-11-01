@@ -4442,11 +4442,12 @@ function parseLive(csvText, defaultLeague) {
   const weekIdx = hl.findIndex(h => /\bweek\b/.test(h) || h === 'wk');
   const leagueIdx = hl.findIndex(h => h.includes('league'));
   const yearIdx = hl.findIndex(h => h === 'year' || h === 'season');
+  const playoffIdx = hl.findIndex(h => h.includes('playoff'));
   const scoreish = hl.map(h => /score|point|pts/.test(h));
   const nameish = hl.map(h => /winner|loser|team|manager|opponent|home|away|player|name|owner/.test(h) && !/score|point|pts/.test(h));
   const skipped = [], unmatched = new Set(), unmatchedLeagues = new Set();
-  const byKey = new Map();
-  let parsed = 0;
+  const list = [];
+  let parsed = 0, playoffRows = 0;
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -4454,9 +4455,10 @@ function parseLive(csvText, defaultLeague) {
       const y = parseInt(String(row[yearIdx]).replace(/\D/g, ''), 10);
       if (y && y !== SEASON_YEAR) continue;
     }
+    if (playoffIdx >= 0 && /^\s*y/i.test(String(row[playoffIdx] || ''))) { playoffRows++; skipped.push({ row: r + 1, reason: 'Playoff game (not counted in regular-season records)' }); continue; }
     let week = null;
     if (weekIdx >= 0) {
-      const w = parseInt(String(row[weekIdx] || '').replace(/\D/g, ''), 10);
+      const w = Math.round(parseFloat(String(row[weekIdx] || '').replace(/[^\d.]/g, '')));
       if (w) week = w;
     }
     if (!week) { skipped.push({ row: r + 1, reason: 'No week number found' }); continue; }
@@ -4471,7 +4473,7 @@ function parseLive(csvText, defaultLeague) {
     }
     const names = [], nums = [];
     for (let c = 0; c < row.length; c++) {
-      if (c === tsIdx || c === weekIdx || c === leagueIdx || c === yearIdx) continue;
+      if (c === tsIdx || c === weekIdx || c === leagueIdx || c === yearIdx || c === playoffIdx) continue;
       const v = String(row[c] || '').trim();
       if (!v) continue;
       if (/^-?\d+(\.\d+)?$/.test(v)) {
@@ -4491,11 +4493,18 @@ function parseLive(csvText, defaultLeague) {
     const a = names[0], b = names[1];
     if (a === b) { skipped.push({ row: r + 1, reason: 'Same manager listed twice' }); continue; }
     const g = { week, league, a, b, aScore: use[0].v, bScore: use[1].v, row: r + 1 };
-    const key = league + '|' + week + '|' + [a, b].sort().join('|');
-    byKey.set(key, g); // later submissions override earlier ones
+    // A manager plays once per week: a later entry replaces any earlier entry for either manager (typo / resubmission).
+    for (let i = list.length - 1; i >= 0; i--) {
+      const o = list[i];
+      if (o.league === league && o.week === week && (o.a === a || o.a === b || o.b === a || o.b === b)) {
+        skipped.push({ row: o.row, reason: `Replaced by a later entry on row ${r + 1} (${mgrName(o.a)} vs ${mgrName(o.b)}, Week ${week})` });
+        list.splice(i, 1); parsed--;
+      }
+    }
+    list.push(g);
     parsed++;
   }
-  const games = Array.from(byKey.values()).sort((x, y) => x.week - y.week);
+  const games = list.slice().sort((x, y) => x.week - y.week || x.row - y.row);
   const weeks = Array.from(new Set(games.map(g => g.week))).sort((x, y) => x - y);
   const leagueCounts = {};
   games.forEach(g => { leagueCounts[g.league] = (leagueCounts[g.league] || 0) + 1; });

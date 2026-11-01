@@ -42,6 +42,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
   body {
@@ -4317,6 +4318,10 @@ const DATA = {
 
 const ALL_EXHIBITS = [...DATA.leagues, DATA.master];
 const STORAGE_KEY = 'hof_unlocked_exhibits_v1';
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTHarc2GTnYC9ntr__erNMVTz9UmaQbGS6tuO6oEe976DHPL_PhZhLB5EQ4RRp9GCM9WM2Iv6MgflQ/pub?gid=348141357&single=true&output=csv';
+const LIVE_CSV_KEY = 'hof_live_csv_v1';
+const LIVE_PREF_KEY = 'hof_live_prefs_v1';
+const SEASON_YEAR = 2026;
 
 /* =========================================================
    HELPERS
@@ -4330,10 +4335,29 @@ function loadUnlocked() {
   }
 }
 function saveUnlocked(arr) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(LIVE_PREF_KEY);
+    const p = raw ? JSON.parse(raw) : {};
+    return { league: p.league || 'work', includeLive: p.includeLive !== false, overrides: p.overrides || {} };
+  } catch (e) {
+    return { league: 'work', includeLive: true, overrides: {} };
+  }
+}
+function savePrefs(p) {
+  try { localStorage.setItem(LIVE_PREF_KEY, JSON.stringify(p)); } catch (e) {}
 }
 function getManager(id) {
   return DATA.managers.find(m => m.id === id) || null;
+}
+function mgrName(id) {
+  const m = getManager(id);
+  return m ? m.name : 'Unknown';
+}
+function getLeague(id) {
+  return DATA.leagues.find(l => l.id === id) || null;
 }
 function leagueSport(leagueId) {
   const l = DATA.leagues.find(l => l.id === leagueId);
@@ -4344,11 +4368,291 @@ function isDualThreat(managerId) {
   const sports = new Set(champRows.map(s => leagueSport(s.league)));
   return sports.has('Football') && sports.has('Baseball');
 }
-function computeStandings(exhibitId, includeAlumni) {
+function pct(n) { return (n * 100).toFixed(1) + '%'; }
+function num2(n) { return (Math.round(n * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+/* =========================================================
+   LIVE SEASON DATA (Google Sheet CSV)
+   ========================================================= */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else inQ = false;
+      } else cell += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { row.push(cell); cell = ''; }
+      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else if (c === '\r') { /* skip */ }
+      else cell += c;
+    }
+  }
+  if (cell.length || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ''));
+}
+function normName(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+const MANAGER_NORMS = DATA.managers.map(m => ({ id: m.id, norm: normName(m.name), idNorm: normName(m.id.replace(/-/g, ' ')) }));
+function matchManager(raw) {
+  const n = normName(raw);
+  if (!n || n.length < 2) return null;
+  let best = null, bestScore = 0, tie = false;
+  const toks = n.split(' ');
+  MANAGER_NORMS.forEach(m => {
+    let score = 0;
+    if (n === m.norm || n === m.idNorm) score = 5;
+    else if (n.length >= 4 && (m.norm.includes(n) || n.includes(m.norm))) score = 3;
+    else {
+      const mt = m.norm.split(' ');
+      const sameLast = toks.length > 1 && toks[toks.length - 1] === mt[mt.length - 1];
+      const firstOk = toks[0] && mt[0] && (mt[0].startsWith(toks[0]) || toks[0].startsWith(mt[0]));
+      if (sameLast && firstOk) score = 4;
+      else if (toks.length === 1 && toks[0] === mt[0]) score = 1; // first name only (low confidence)
+    }
+    if (score > bestScore) { best = m.id; bestScore = score; tie = false; }
+    else if (score === bestScore && score > 0) tie = true;
+  });
+  if (tie && bestScore < 4) return null; // ambiguous
+  return best;
+}
+function leagueFromText(txt) {
+  const t = normName(txt);
+  if (!t) return null;
+  if (t.includes('horner') || t.includes('work')) return 'work';
+  if (t.includes('jon bought') || t.includes('dinner') || t.includes('football2') || t.includes('jk')) return 'football2';
+  if (t.includes('zero') || t.includes('battle') || t.includes('football3')) return 'football3';
+  if (t.includes('baseball') || t.includes('memorial league')) return 'baseball';
+  return null;
+}
+function parseLive(csvText, defaultLeague) {
+  const empty = { games: [], diag: { headers: [], rowCount: 0, parsed: 0, skipped: [], unmatched: [], unmatchedLeagues: [], leagueIdx: -1, leagueCounts: {}, weeks: [], note: '' } };
+  if (!csvText || !csvText.trim()) return empty;
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) return { ...empty, diag: { ...empty.diag, note: 'CSV has no data rows.' } };
+  const headers = rows[0].map(h => String(h).trim());
+  const hl = headers.map(h => h.toLowerCase());
+  const tsIdx = hl.findIndex(h => h.includes('timestamp'));
+  const weekIdx = hl.findIndex(h => /\bweek\b/.test(h) || h === 'wk');
+  const leagueIdx = hl.findIndex(h => h.includes('league'));
+  const yearIdx = hl.findIndex(h => h === 'year' || h === 'season');
+  const scoreish = hl.map(h => /score|point|pts/.test(h));
+  const nameish = hl.map(h => /winner|loser|team|manager|opponent|home|away|player|name|owner/.test(h) && !/score|point|pts/.test(h));
+  const skipped = [], unmatched = new Set(), unmatchedLeagues = new Set();
+  const byKey = new Map();
+  let parsed = 0;
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (yearIdx >= 0) {
+      const y = parseInt(String(row[yearIdx]).replace(/\D/g, ''), 10);
+      if (y && y !== SEASON_YEAR) continue;
+    }
+    let week = null;
+    if (weekIdx >= 0) {
+      const w = parseInt(String(row[weekIdx] || '').replace(/\D/g, ''), 10);
+      if (w) week = w;
+    }
+    if (!week) { skipped.push({ row: r + 1, reason: 'No week number found' }); continue; }
+    let league = defaultLeague;
+    if (leagueIdx >= 0) {
+      const rawLeague = String(row[leagueIdx] || '').trim();
+      if (rawLeague) {
+        const l = leagueFromText(rawLeague);
+        if (!l) { unmatchedLeagues.add(rawLeague); skipped.push({ row: r + 1, reason: `Unrecognized league "${rawLeague}"` }); continue; }
+        league = l;
+      }
+    }
+    const names = [], nums = [];
+    for (let c = 0; c < row.length; c++) {
+      if (c === tsIdx || c === weekIdx || c === leagueIdx || c === yearIdx) continue;
+      const v = String(row[c] || '').trim();
+      if (!v) continue;
+      if (/^-?\d+(\.\d+)?$/.test(v)) {
+        nums.push({ v: parseFloat(v), scoreCol: scoreish[c] });
+        continue;
+      }
+      const id = matchManager(v);
+      if (id) names.push(id);
+      else if (nameish[c]) unmatched.add(v);
+    }
+    const sc = nums.filter(n => n.scoreCol);
+    const use = sc.length >= 2 ? sc : nums;
+    if (names.length < 2 || use.length < 2) {
+      skipped.push({ row: r + 1, reason: `Found ${names.length} manager name(s) and ${use.length} score(s); need 2 of each` });
+      continue;
+    }
+    const a = names[0], b = names[1];
+    if (a === b) { skipped.push({ row: r + 1, reason: 'Same manager listed twice' }); continue; }
+    const g = { week, league, a, b, aScore: use[0].v, bScore: use[1].v, row: r + 1 };
+    const key = league + '|' + week + '|' + [a, b].sort().join('|');
+    byKey.set(key, g); // later submissions override earlier ones
+    parsed++;
+  }
+  const games = Array.from(byKey.values()).sort((x, y) => x.week - y.week);
+  const weeks = Array.from(new Set(games.map(g => g.week))).sort((x, y) => x - y);
+  const leagueCounts = {};
+  games.forEach(g => { leagueCounts[g.league] = (leagueCounts[g.league] || 0) + 1; });
+  return { games, diag: { headers, rowCount: rows.length - 1, parsed, skipped, unmatched: Array.from(unmatched), unmatchedLeagues: Array.from(unmatchedLeagues), leagueIdx, leagueCounts, weeks, note: '' } };
+}
+function applyLive(games) {
+  const stats = DATA.stats.map(s => ({ ...s }));
+  const h2h = DATA.h2h.map(h => ({ ...h }));
+  const findStat = (id, lg) => stats.find(s => s.managerId === id && s.league === lg);
+  games.forEach(g => {
+    const sa = findStat(g.a, g.league), sb = findStat(g.b, g.league);
+    const aw = g.aScore > g.bScore, bw = g.bScore > g.aScore;
+    if (sa) { if (aw) sa.wins++; else if (bw) sa.losses++; else sa.ties++; }
+    if (sb) { if (bw) sb.wins++; else if (aw) sb.losses++; else sb.ties++; }
+    if (leagueSport(g.league) === 'Football') {
+      let e = h2h.find(h => (h.a === g.a && h.b === g.b) || (h.a === g.b && h.b === g.a));
+      if (!e) {
+        e = { a: g.a, b: g.b, aWins: 0, bWins: 0, ties: 0, aPlayoffWins: 0, bPlayoffWins: 0, aPoints: 0, bPoints: 0 };
+        h2h.push(e);
+      }
+      const aIsA = e.a === g.a;
+      const aS = aIsA ? g.aScore : g.bScore, bS = aIsA ? g.bScore : g.aScore;
+      if (aS > bS) e.aWins++; else if (bS > aS) e.bWins++; else e.ties++;
+      e.aPoints = Math.round((e.aPoints + aS) * 100) / 100;
+      e.bPoints = Math.round((e.bPoints + bS) * 100) / 100;
+    }
+  });
+  return { stats, h2h };
+}
+function seasonTable(games, leagueId) {
+  const map = new Map();
+  const ensure = id => {
+    if (!map.has(id)) map.set(id, { id, name: mgrName(id), w: 0, l: 0, t: 0, pf: 0, pa: 0, results: [] });
+    return map.get(id);
+  };
+  games.filter(g => g.league === leagueId).forEach(g => {
+    const A = ensure(g.a), B = ensure(g.b);
+    A.pf += g.aScore; A.pa += g.bScore; B.pf += g.bScore; B.pa += g.aScore;
+    if (g.aScore > g.bScore) { A.w++; B.l++; A.results.push({ week: g.week, r: 'W' }); B.results.push({ week: g.week, r: 'L' }); }
+    else if (g.bScore > g.aScore) { B.w++; A.l++; B.results.push({ week: g.week, r: 'W' }); A.results.push({ week: g.week, r: 'L' }); }
+    else { A.t++; B.t++; A.results.push({ week: g.week, r: 'T' }); B.results.push({ week: g.week, r: 'T' }); }
+  });
+  const rows = Array.from(map.values());
+  rows.forEach(r => {
+    r.results.sort((x, y) => x.week - y.week);
+    const gp = r.w + r.l + r.t;
+    r.winPct = gp ? (r.w + 0.5 * r.t) / gp : 0;
+    let streakType = '', streakLen = 0;
+    for (let i = r.results.length - 1; i >= 0; i--) {
+      const t = r.results[i].r;
+      if (!streakType) { streakType = t; streakLen = 1; }
+      else if (t === streakType) streakLen++;
+      else break;
+    }
+    r.streakType = streakType; r.streakLen = streakLen;
+  });
+  rows.sort((a, b) => b.w - a.w || a.l - b.l || b.pf - a.pf);
+  rows.forEach((r, i) => { r.rank = i + 1; });
+  return rows;
+}
+
+/* Detect how many 2026 weeks are already inside the embedded career totals.
+   The embedded records block lists each league's hottest/coldest current streak "through 2026, Week N".
+   If the CSV's Week N shows that hot manager winning and that cold manager losing, the embedded
+   data already contains Week N, so CSV weeks <= N must not be added again. */
+function detectBaselines(games) {
+  const out = {};
+  DATA.leagues.forEach(l => {
+    out[l.id] = { weeks: 0, reason: 'no 2026 games embedded' };
+    const rec = DATA.records && DATA.records[l.id];
+    if (!rec) return;
+    const hot = rec.hottestCurrentStreak, cold = rec.coldestCurrentStreak;
+    const refs = [hot, cold].filter(x => x && x.lastYear === SEASON_YEAR && x.manager);
+    if (!refs.length) return;
+    const w = Math.max(...refs.map(x => x.lastWeek));
+    const result = (mid, wk) => {
+      const g = games.find(x => x.league === l.id && x.week === wk && (x.a === mid || x.b === mid));
+      if (!g) return null;
+      const my = g.a === mid ? g.aScore : g.bScore, opp = g.a === mid ? g.bScore : g.aScore;
+      return my > opp ? 'W' : my < opp ? 'L' : 'T';
+    };
+    let ok = 0, bad = 0;
+    refs.forEach(x => {
+      const r = result(x.manager, x.lastWeek);
+      if (r === null) return;
+      if (r === x.type) ok++; else bad++;
+    });
+    if (ok > 0 && bad === 0) out[l.id] = { weeks: w, reason: `sheet Week ${w} matches embedded streak records` };
+    else if (bad > 0) out[l.id] = { weeks: 0, reason: 'sheet results contradict embedded streak records' };
+    else out[l.id] = { weeks: 0, reason: 'could not verify against sheet' };
+  });
+  return out;
+}
+
+/* Rule-based playoff odds (6 teams, top 2 get byes).
+   - Each team's win rate is shrunk toward .500 with 3 phantom games each side: p = (W+3)/(G+6)
+   - Projected final wins = W + remaining * p; spread = sqrt(remaining * p * (1-p))
+   - The playoff line sits halfway between the projected 6th and 7th teams; the bye line between 2nd and 3rd
+   - Odds = chance a team's final wins land above that line (normal approximation) */
+const PLAYOFF_CFG = {
+  work: { spots: 6, byes: 2, games: 13 },
+  football3: { spots: 6, byes: 2, games: 14 },
+};
+function normCdf(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp(-z * z / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return z > 0 ? 1 - p : p;
+}
+function oddsModel(entries, N, spots, byes) {
+  const rows = entries.map(e => {
+    const R = Math.max(0, N - e.g);
+    const p = (e.w + 3) / (e.g + 6);
+    return { ...e, R, p, mu: e.w + R * p, sd: Math.sqrt(R * p * (1 - p)) };
+  }).sort((a, b) => b.mu - a.mu || b.pf - a.pf);
+  const lineAt = k => (k <= 0 ? Infinity : rows.length > k ? (rows[k - 1].mu + rows[k].mu) / 2 : -Infinity);
+  const poLine = lineAt(spots), byeLine = lineAt(byes);
+  const prob = (r, C) => {
+    if (C === -Infinity) return 1;
+    if (C === Infinity) return 0;
+    if (r.R === 0) return r.w > C ? 1 : (r.w === C ? 0.5 : 0);
+    return 1 - normCdf((C - r.mu) / r.sd);
+  };
+  const out = {};
+  rows.forEach((r, i) => { out[r.id] = { po: prob(r, poLine), bye: prob(r, byeLine), mu: r.mu, rank: i + 1 }; });
+  return out;
+}
+function oddsEntries(games, leagueId) {
+  const table = seasonTable(games, leagueId);
+  const seen = new Set(table.map(t => t.id));
+  const entries = table.map(t => ({ id: t.id, w: t.w + 0.5 * t.t, g: t.w + t.l + t.t, pf: t.pf }));
+  activeManagerIds(leagueId, games).forEach(id => { if (!seen.has(id)) entries.push({ id, w: 0, g: 0, pf: 0 }); });
+  return entries;
+}
+function matchupOdds(entries, N, cfg, aId, bId) {
+  const mk = (winner, loser) => entries.map(e => e.id === winner ? { ...e, w: e.w + 1, g: e.g + 1 } : e.id === loser ? { ...e, g: e.g + 1 } : e);
+  const base = oddsModel(entries, N, cfg.spots, cfg.byes);
+  const aWin = oddsModel(mk(aId, bId), N, cfg.spots, cfg.byes);
+  const bWin = oddsModel(mk(bId, aId), N, cfg.spots, cfg.byes);
+  const side = (me, winScn, loseScn) => ({
+    now: base[me].po, ifWin: winScn[me].po, ifLose: loseScn[me].po,
+    swing: winScn[me].po - loseScn[me].po,
+    byeNow: base[me].bye, byeWin: winScn[me].bye, byeLose: loseScn[me].bye,
+  });
+  return { a: side(aId, aWin, bWin), b: side(bId, bWin, aWin) };
+}
+function pc(x) { return Math.round(x * 100) + '%'; }
+
+/* =========================================================
+   STANDINGS / H2H
+   ========================================================= */
+function computeStandings(exhibitId, includeAlumni, sortMode, stats) {
+  stats = stats || DATA.stats;
+  sortMode = sortMode || 'hof';
   let rows;
   if (exhibitId === 'master') {
     rows = DATA.managers.map(m => {
-      const statRows = DATA.stats.filter(s => s.managerId === m.id);
+      const statRows = stats.filter(s => s.managerId === m.id);
       if (statRows.length < 2) return null; // Master exhibit: only multi-league managers
       const agg = statRows.reduce((acc, s) => ({
         wins: acc.wins + s.wins,
@@ -4364,10 +4668,10 @@ function computeStandings(exhibitId, includeAlumni) {
       return { managerId: m.id, name: m.name, ...agg };
     }).filter(Boolean);
   } else {
-    rows = DATA.stats.filter(s => s.league === exhibitId).map(s => {
+    rows = stats.filter(s => s.league === exhibitId).map(s => {
       const m = getManager(s.managerId);
       return {
-        managerId: s.managerId, name: m.name,
+        managerId: s.managerId, name: m ? m.name : s.managerId,
         wins: s.wins, losses: s.losses, ties: s.ties,
         playoffWins: s.playoffWins, playoffLosses: s.playoffLosses,
         playoffAppearances: s.playoffAppearances || 0,
@@ -4384,10 +4688,12 @@ function computeStandings(exhibitId, includeAlumni) {
     r.isDualThreat = isDualThreat(r.managerId);
   });
 
-  // Per-Season HOF Score (all exhibits): rewards title rate, playoff rate, win rate,
-  // and longevity, all normalized by tracked seasons so shorter careers aren't
-  // unfairly boosted or buried purely by raw totals.
-  rows = rows.filter(r => r.seasonsActive >= 2); // minimum qualification
+  // Per-Season HOF Score:
+  //   Title Rate    = (Championships / Tracked Seasons) * 100
+  //   Playoff Rate  = (Playoff Appearances / Tracked Seasons) * 25
+  //   Win Rate      = Overall Win % * 50
+  //   Longevity     = Tracked Seasons * 5
+  rows = rows.filter(r => r.seasonsActive >= 2); // minimum qualification: 2 tracked seasons
   rows.forEach(r => {
     const titleRate = (r.championships / r.seasonsActive) * 100;
     const playoffRate = (r.playoffAppearances / r.seasonsActive) * 25;
@@ -4399,15 +4705,21 @@ function computeStandings(exhibitId, includeAlumni) {
     r.winRate = winRate;
     r.longevityBonus = longevityBonus;
   });
-  rows.sort((a, b) => b.hofScore - a.hofScore);
+  const sorters = {
+    hof: (a, b) => b.hofScore - a.hofScore,
+    rings: (a, b) => b.championships - a.championships || b.hofScore - a.hofScore,
+    winpct: (a, b) => b.winPct - a.winPct || b.hofScore - a.hofScore,
+  };
+  rows.sort(sorters[sortMode] || sorters.hof);
   if (exhibitId === 'master') {
     rows = rows.slice(0, 10); // Master only: cap to top 10
   }
   rows.forEach((r, i) => { r.rank = i + 1; });
   return rows;
 }
-function getH2H(aId, bId) {
-  const entry = DATA.h2h.find(h => (h.a === aId && h.b === bId) || (h.a === bId && h.b === aId));
+function getH2H(aId, bId, h2hArr) {
+  const arr = h2hArr || DATA.h2h;
+  const entry = arr.find(h => (h.a === aId && h.b === bId) || (h.a === bId && h.b === aId));
   if (!entry) return null;
   if (entry.a === aId) return entry;
   return {
@@ -4417,9 +4729,10 @@ function getH2H(aId, bId) {
     aPoints: entry.bPoints, bPoints: entry.aPoints,
   };
 }
-function getRivals(managerId) {
+function getRivals(managerId, h2hArr) {
+  const arr = h2hArr || DATA.h2h;
   let nemesis = null, nemesisLosses = -1, victim = null, victimWins = -1;
-  DATA.h2h.forEach(h => {
+  arr.forEach(h => {
     let oppId, myWins, myLosses;
     if (h.a === managerId) { oppId = h.b; myWins = h.aWins; myLosses = h.bWins; }
     else if (h.b === managerId) { oppId = h.a; myWins = h.bWins; myLosses = h.aWins; }
@@ -4432,10 +4745,8 @@ function getRivals(managerId) {
     victim: victim ? getManager(victim) : null, victimWins,
   };
 }
-function pct(n) { return (n * 100).toFixed(1) + '%'; }
 function managersForExhibit(exhibitId) {
   if (exhibitId === 'master') {
-    // Match the master standings restriction: only managers in 2+ leagues
     const counts = {};
     DATA.stats.forEach(s => { counts[s.managerId] = (counts[s.managerId] || 0) + 1; });
     return DATA.managers.filter(m => (counts[m.id] || 0) >= 2);
@@ -4458,7 +4769,7 @@ function TrophyCount({ count }) {
   );
 }
 function RankBadge({ rank }) {
-  if (rank === 1) return <span title="Hall of Fame Inductee" className="text-lg">👑</span>;
+  if (rank === 1) return <span title="Rank 1" className="text-lg">👑</span>;
   if (rank === 2) return <span className="text-lg">🥈</span>;
   if (rank === 3) return <span className="text-lg">🥉</span>;
   return <span className="text-slate-400">#{rank}</span>;
@@ -4527,7 +4838,7 @@ function PinModal({ exhibit, onClose, onSuccess }) {
 /* =========================================================
    LOBBY
    ========================================================= */
-function Lobby({ unlocked, onSelect }) {
+function Lobby({ unlocked, onSelect, onNewsletter }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-14">
@@ -4570,6 +4881,143 @@ function Lobby({ unlocked, onSelect }) {
           );
         })}
       </div>
+
+      {unlocked.length > 0 && (
+        <div className="mt-8">
+          <button
+            onClick={onNewsletter}
+            className="vault-card w-full text-left plaque-texture border border-sky-200 shadow-gold-glow hover:border-sky-400 rounded-lg p-6 flex items-center justify-between gap-4"
+          >
+            <div>
+              <h3 className="font-serif text-lg text-slate-800">📰 Weekly Newsletter Builder</h3>
+              <p className="text-slate-400 text-xs mt-1">Pick matchups, pull H2H history and live standings, export a PDF.</p>
+            </div>
+            <span className="text-sky-600 text-sm font-medium whitespace-nowrap">Open →</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================
+   LIVE DATA PANEL
+   ========================================================= */
+function detectedWeeks(live, id) {
+  const d = live.detected && live.detected[id];
+  return d ? d.weeks : 0;
+}
+function LiveDataPanel({ live, compact }) {
+  const { parsed, status, refresh, includeLive, setIncludeLive, baselines, overrides, setOverride, defaultLeague, setDefaultLeague, applyPaste } = live;
+  const [paste, setPaste] = useState('');
+  const d = parsed.diag;
+  const footballLeagues = DATA.leagues;
+  const weeksTxt = d.weeks.length ? `Weeks ${d.weeks[0]}–${d.weeks[d.weeks.length - 1]}` : 'No weeks yet';
+
+  return (
+    <div className="mb-6 bg-white border border-sky-100 rounded-lg shadow-gold-glow p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sky-600 text-[11px] uppercase tracking-widest font-semibold">Live {SEASON_YEAR} Season Data</p>
+          <p className="text-slate-600 text-sm mt-0.5">
+            {status.state === 'loading' && 'Loading from Google Sheet…'}
+            {status.state !== 'loading' && `${parsed.games.length} games · ${weeksTxt}`}
+            {status.fetchedAt && status.state === 'ok' && <span className="text-slate-400"> · synced {status.fetchedAt.toLocaleTimeString()}</span>}
+          </p>
+          {status.state === 'error' && (
+            <p className="text-red-500 text-xs mt-1">Could not reach the sheet ({status.error}). {parsed.games.length ? 'Showing last saved copy.' : 'Open "Sheet details" below to paste the CSV manually.'}</p>
+          )}
+        </div>
+        <button onClick={refresh} className="text-xs border border-sky-200 text-sky-700 hover:border-sky-400 hover:bg-sky-50 rounded-md px-3 py-1.5">↻ Refresh Sheet</button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={includeLive} onChange={e => setIncludeLive(e.target.checked)} />
+          Add live results to career records
+        </label>
+        <label className="flex items-center gap-2">
+          League for rows with a blank League value:
+          <select value={defaultLeague} onChange={e => setDefaultLeague(e.target.value)} className="border border-sky-200 rounded px-2 py-1 bg-white">
+            {footballLeagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="mt-3 text-xs text-slate-600">
+        <p className="mb-1"><strong>2026 weeks already inside the embedded career totals</strong> (sheet weeks at or below these are not added again; the {SEASON_YEAR} Season Standings always use the sheet alone):</p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {['work', 'football2', 'football3'].map(id => {
+            const b = baselines[id] || { weeks: 0, reason: '' };
+            return (
+              <label key={id} className="flex items-center gap-2" title={b.reason}>
+                {(getLeague(id) || {}).name}:
+                <input type="number" min="0" max="18" value={overrides[id] === undefined ? '' : overrides[id]} placeholder={'auto ' + (detectedWeeks(live, id))} onChange={e => setOverride(id, e.target.value)} className="w-16 border border-sky-200 rounded px-2 py-1" />
+                <span className="text-slate-400">using {b.weeks} ({b.reason})</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <details className="mt-3" open={!compact && (d.skipped.length > 0 || d.unmatched.length > 0 || parsed.games.length === 0)}>
+        <summary className="text-xs text-sky-600 cursor-pointer select-none">Sheet details</summary>
+        <div className="mt-2 text-xs text-slate-600 space-y-2">
+          <p><strong>Columns detected:</strong> {d.headers.length ? d.headers.join(' | ') : '—'}</p>
+          <p><strong>Rows read:</strong> {d.rowCount} · <strong>Games parsed:</strong> {d.parsed} · <strong>Skipped:</strong> {d.skipped.length}</p>
+          <p><strong>League column:</strong> {d.leagueIdx >= 0 ? `found ("${d.headers[d.leagueIdx]}")` : 'not found — all rows use the fallback league'} · <strong>Games by league:</strong> {Object.keys(d.leagueCounts).length ? Object.keys(d.leagueCounts).map(k => `${(getLeague(k) || {}).name}: ${d.leagueCounts[k]}`).join(' · ') : '—'}</p>
+          {d.unmatchedLeagues && d.unmatchedLeagues.length > 0 && <p className="text-amber-700"><strong>League values not recognized:</strong> {d.unmatchedLeagues.join(', ')}</p>}
+          {d.unmatched.length > 0 && <p className="text-amber-700"><strong>Names not matched to a manager:</strong> {d.unmatched.join(', ')}</p>}
+          {d.skipped.length > 0 && (
+            <ul className="list-disc pl-5 text-slate-500">
+              {d.skipped.slice(0, 12).map((s, i) => <li key={i}>Row {s.row}: {s.reason}</li>)}
+              {d.skipped.length > 12 && <li>…and {d.skipped.length - 12} more</li>}
+            </ul>
+          )}
+          <div>
+            <p className="mb-1"><strong>Manual fallback:</strong> paste the sheet as CSV (File → Download → CSV, open in TextEdit) and apply.</p>
+            <textarea value={paste} onChange={e => setPaste(e.target.value)} rows="4" className="w-full border border-sky-200 rounded p-2 font-mono text-[11px]" placeholder="Paste CSV here…" />
+            <button onClick={() => { applyPaste(paste); setPaste(''); }} disabled={!paste.trim()} className="mt-1 text-xs border border-sky-200 text-sky-700 rounded px-3 py-1 disabled:opacity-40 hover:bg-sky-50">Apply pasted CSV</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/* =========================================================
+   CURRENT SEASON STANDINGS
+   ========================================================= */
+function SeasonStandings({ games, leagueId }) {
+  const rows = useMemo(() => seasonTable(games, leagueId), [games, leagueId]);
+  if (rows.length === 0) return null;
+  const weeks = Array.from(new Set(games.filter(g => g.league === leagueId).map(g => g.week))).sort((a, b) => a - b);
+  return (
+    <div className="mt-10">
+      <h3 className="font-serif text-xl text-slate-800 mb-1 flex items-center gap-2">📈 {SEASON_YEAR} Season Standings</h3>
+      <p className="text-slate-400 text-sm mb-4">Live from the weekly results sheet — through Week {weeks[weeks.length - 1]}.</p>
+      <div className="overflow-x-auto rounded-lg border border-sky-100 shadow-gold-glow bg-white">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="bg-sky-50 text-sky-700 uppercase text-[11px] tracking-wider">
+              {['Rank', 'Manager', 'Record', 'Win %', 'PF', 'PA', 'Streak'].map(h => <th key={h} className="px-4 py-3 text-left font-serif font-normal whitespace-nowrap">{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.id} className="border-t border-slate-100 hover:bg-sky-50/60">
+                <td className="px-4 py-2.5 text-slate-400">#{r.rank}</td>
+                <td className="px-4 py-2.5 font-serif text-slate-800">{r.name}</td>
+                <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{r.w}-{r.l}{r.t ? '-' + r.t : ''}</td>
+                <td className="px-4 py-2.5 text-sky-700 font-semibold">{pct(r.winPct)}</td>
+                <td className="px-4 py-2.5 text-slate-600">{num2(r.pf)}</td>
+                <td className="px-4 py-2.5 text-slate-600">{num2(r.pa)}</td>
+                <td className="px-4 py-2.5 text-slate-600">{r.streakType ? r.streakType + r.streakLen : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -4577,7 +5025,7 @@ function Lobby({ unlocked, onSelect }) {
 /* =========================================================
    STANDINGS TABLE
    ========================================================= */
-function StandingsTable({ rows, onSelectManager, showPlayoff, showHofScore }) {
+function StandingsTable({ rows, onSelectManager, showPlayoff, showHofScore, hofMode }) {
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('desc');
 
@@ -4617,7 +5065,7 @@ function StandingsTable({ rows, onSelectManager, showPlayoff, showHofScore }) {
         else cmp = av - bv;
         return sortDir === 'asc' ? cmp : -cmp;
       })
-    : rows; // default: original rank order
+    : rows;
 
   return (
     <div className="overflow-x-auto rounded-lg border border-sky-100 shadow-gold-glow bg-white">
@@ -4646,7 +5094,7 @@ function StandingsTable({ rows, onSelectManager, showPlayoff, showHofScore }) {
                   {r.name}
                 </button>
                 <div className="flex gap-1 mt-1">
-                  {r.rank === 1 && <Badge className="border-amber-300 text-amber-700 bg-amber-50">HOF Inductee</Badge>}
+                  {r.rank === 1 && hofMode && <Badge className="border-amber-300 text-amber-700 bg-amber-50">HOF Inductee</Badge>}
                   {r.isDualThreat && <Badge className="border-fuchsia-300 text-fuchsia-700 bg-fuchsia-50">Dual-Threat</Badge>}
                   {!r.active && <Badge className="border-slate-200 text-slate-400 bg-slate-50">Alumni</Badge>}
                 </div>
@@ -4669,15 +5117,15 @@ function StandingsTable({ rows, onSelectManager, showPlayoff, showHofScore }) {
 /* =========================================================
    RIVALRY TOOL
    ========================================================= */
-function RivalryTool({ managers }) {
+function RivalryTool({ managers, eff }) {
   const [aId, setAId] = useState('');
   const [bId, setBId] = useState('');
-  const h2h = (aId && bId && aId !== bId) ? getH2H(aId, bId) : null;
+  const h2h = (aId && bId && aId !== bId) ? getH2H(aId, bId, eff.h2h) : null;
   const mA = getManager(aId), mB = getManager(bId);
   const validPair = aId && bId && aId !== bId;
 
   function careerTotals(managerId) {
-    const rows = DATA.stats.filter(s => s.managerId === managerId);
+    const rows = eff.stats.filter(s => s.managerId === managerId);
     return rows.reduce((acc, s) => ({
       championships: acc.championships + s.championships,
       wins: acc.wins + s.wins,
@@ -4823,7 +5271,6 @@ function LeagueTimeline({ exhibitId }) {
   const entries = (DATA.history && DATA.history[exhibitId]) || [];
   if (entries.length === 0) return null;
 
-  // walk oldest -> newest, tracking each champion's title count so far
   const titleCounts = {};
   const withMeta = entries.map(e => {
     titleCounts[e.championId] = (titleCounts[e.championId] || 0) + 1;
@@ -4835,7 +5282,6 @@ function LeagueTimeline({ exhibitId }) {
     return { ...e, titleNumber: n, flavor };
   });
 
-  // detect true back-to-back (same champion as immediately preceding season)
   withMeta.forEach((e, i) => {
     if (i > 0 && withMeta[i - 1].championId === e.championId) {
       e.flavor = 'Back-to-Back Champion';
@@ -4885,14 +5331,16 @@ function LeagueTimeline({ exhibitId }) {
 /* =========================================================
    MANAGER PLAQUE MODAL
    ========================================================= */
-function ManagerPlaqueModal({ managerId, onClose }) {
+function ManagerPlaqueModal({ managerId, onClose, eff }) {
   const m = getManager(managerId);
   if (!m) return null;
-  const statRows = DATA.stats.filter(s => s.managerId === managerId);
+  const statRows = eff.stats.filter(s => s.managerId === managerId);
   const totalChampionships = statRows.reduce((a, s) => a + s.championships, 0);
   const dual = isDualThreat(managerId);
-  const { nemesis, nemesisLosses, victim, victimWins } = getRivals(managerId);
-  const leagueNames = statRows.map(s => DATA.leagues.find(l => l.id === s.league).name);
+  const { nemesis, nemesisLosses, victim, victimWins } = getRivals(managerId, eff.h2h);
+  const leagueNames = statRows.map(s => (getLeague(s.league) || {}).name).filter(Boolean);
+  const bs = m.bestSeason || null;
+  const bsLeague = bs ? getLeague(bs.league) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4">
@@ -4925,7 +5373,7 @@ function ManagerPlaqueModal({ managerId, onClose }) {
                 </thead>
                 <tbody>
                   {statRows.map(s => {
-                    const league = DATA.leagues.find(l => l.id === s.league);
+                    const league = getLeague(s.league);
                     const gp = s.wins + s.losses + s.ties;
                     const wp = gp ? (s.wins + 0.5 * s.ties) / gp : 0;
                     return (
@@ -4951,8 +5399,12 @@ function ManagerPlaqueModal({ managerId, onClose }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-sky-50 border border-sky-100 rounded-md p-4">
             <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Best Single Season</p>
-            <p className="font-serif text-sky-700 text-lg">{m.bestSeason.record}</p>
-            <p className="text-slate-500 text-xs mt-1">{m.bestSeason.year} · {DATA.leagues.find(l => l.id === m.bestSeason.league).name}</p>
+            {bs ? (
+              <React.Fragment>
+                <p className="font-serif text-sky-700 text-lg">{bs.record}</p>
+                <p className="text-slate-500 text-xs mt-1">{bs.year} · {bsLeague ? bsLeague.name : bs.league}</p>
+              </React.Fragment>
+            ) : <p className="text-slate-400 text-sm italic">Not recorded</p>}
           </div>
           <div className="bg-sky-50 border border-sky-100 rounded-md p-4">
             <p className="text-slate-400 text-[11px] uppercase tracking-wide mb-1">Career Championships</p>
@@ -5094,14 +5546,18 @@ function RecordsAndSuperlatives({ exhibitId }) {
 /* =========================================================
    EXHIBIT VIEW
    ========================================================= */
-function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager }) {
-  const rows = useMemo(() => computeStandings(exhibit.id, includeAlumni), [exhibit.id, includeAlumni]);
-  const managers = managersForExhibit(exhibit.id);
+function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager, eff, live }) {
+  const [sortMode, setSortMode] = useState('hof');
   const isMaster = exhibit.id === 'master';
-  // Playoff bracket detail only exists for Horner and Zero Prep (and the master
-  // rollup, since it sums whatever real playoff data exists across leagues).
-  // Jon Bought Dinner and Baseball have no reliable playoff W-L in the source data.
+  const mode = isMaster ? sortMode : 'hof';
+  const rows = useMemo(() => computeStandings(exhibit.id, includeAlumni, mode, eff.stats), [exhibit.id, includeAlumni, mode, eff]);
+  const managers = managersForExhibit(exhibit.id);
   const showPlayoff = exhibit.id === 'work' || exhibit.id === 'football3' || isMaster;
+  const sortOptions = [
+    { id: 'hof', label: 'HOF Power Score' },
+    { id: 'rings', label: 'Championship Rings' },
+    { id: 'winpct', label: 'Win %' },
+  ];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
@@ -5122,6 +5578,8 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
         </label>
       </div>
 
+      <LiveDataPanel live={live} compact={true} />
+
       {DATA.notes && DATA.notes[exhibit.id] && (
         <p className="text-slate-400 text-xs italic mb-4 bg-sky-50 border border-sky-100 rounded-md px-3 py-2">
           ℹ️ {DATA.notes[exhibit.id]}
@@ -5129,14 +5587,380 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
       )}
 
       <p className="text-slate-400 text-xs italic mb-4 bg-sky-50 border border-sky-100 rounded-md px-3 py-2">
-        ℹ️ Ranked by <strong>HOF Score</strong>, not just win % — a blend of title rate, playoff rate, win rate, and longevity, each measured per tracked season so shorter careers aren't unfairly boosted or buried. Only managers with 2+ tracked seasons qualify{isMaster ? ', shown top 10' : ''}. Hover a score for its breakdown.
+        ℹ️ Default ranking is <strong>HOF Score</strong> — a blend of title rate, playoff rate, win rate, and longevity, each measured per tracked season so shorter careers aren't unfairly boosted or buried. Only managers with 2+ tracked seasons qualify{isMaster ? ', shown top 10' : ''}. Hover a score for its breakdown.
       </p>
 
-      <StandingsTable rows={rows} onSelectManager={onSelectManager} showPlayoff={showPlayoff} showHofScore={true} />
+      {isMaster && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs uppercase tracking-widest text-sky-600 font-semibold mr-1">Rank by</span>
+          {sortOptions.map(o => (
+            <button
+              key={o.id}
+              onClick={() => setSortMode(o.id)}
+              className={
+                "px-3 py-1.5 rounded-full text-xs font-medium border transition " +
+                (sortMode === o.id ? "bg-sky-500 border-sky-500 text-white shadow-sm" : "bg-white border-sky-200 text-slate-500 hover:border-sky-400 hover:text-sky-700")
+              }
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <StandingsTable key={exhibit.id + mode} rows={rows} onSelectManager={onSelectManager} showPlayoff={showPlayoff} showHofScore={true} hofMode={mode === 'hof'} />
+      {!isMaster && <SeasonStandings games={live.parsed.games} leagueId={exhibit.id} />}
       {!isMaster && <RecordsAndSuperlatives exhibitId={exhibit.id} />}
-      <RivalryTool managers={managers} />
+      <RivalryTool managers={managers} eff={eff} />
       {!isMaster && <TradeBlock exhibitId={exhibit.id} />}
       {!isMaster && <LeagueTimeline exhibitId={exhibit.id} />}
+    </div>
+  );
+}
+
+/* =========================================================
+   NEWSLETTER BUILDER
+   ========================================================= */
+function activeManagerIds(leagueId, games) {
+  const ids = new Set(DATA.stats.filter(s => s.league === leagueId && s.active).map(s => s.managerId));
+  games.filter(g => g.league === leagueId).forEach(g => { ids.add(g.a); ids.add(g.b); });
+  return Array.from(ids).filter(id => getManager(id)).sort((a, b) => mgrName(a).localeCompare(mgrName(b)));
+}
+function lastMeetingText(games, leagueId, a, b) {
+  const meets = games.filter(g => g.league === leagueId && ((g.a === a && g.b === b) || (g.a === b && g.b === a))).sort((x, y) => y.week - x.week);
+  if (!meets.length) return `No ${SEASON_YEAR} meeting yet — see all-time series.`;
+  const g = meets[0];
+  const aScore = g.a === a ? g.aScore : g.bScore, bScore = g.a === a ? g.bScore : g.aScore;
+  if (aScore === bScore) return `${SEASON_YEAR} Week ${g.week}: tied ${num2(aScore)}–${num2(bScore)}`;
+  const winner = aScore > bScore ? a : b;
+  return `${SEASON_YEAR} Week ${g.week}: ${mgrName(winner)} won ${num2(Math.max(aScore, bScore))}–${num2(Math.min(aScore, bScore))}`;
+}
+function milestonesFor(leagueId, eff, games) {
+  const out = [];
+  const step = leagueSport(leagueId) === 'Baseball' ? 100 : 50;
+  eff.stats.filter(s => s.league === leagueId && s.active).forEach(s => {
+    const next = (Math.floor(s.wins / step) + 1) * step;
+    const away = next - s.wins;
+    if (away <= 5) out.push(`${mgrName(s.managerId)} is ${away} win${away === 1 ? '' : 's'} from ${next} career league wins (currently ${s.wins}).`);
+  });
+  const table = seasonTable(games, leagueId);
+  table.forEach(r => {
+    if (r.streakLen >= 3) out.push(`${r.name} is on a ${r.streakLen}-game ${r.streakType === 'W' ? 'winning' : r.streakType === 'L' ? 'losing' : 'tie'} streak.`);
+  });
+  return out;
+}
+
+function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
+  const league = getLeague(leagueId);
+  const isFootball = league && league.sport === 'Football';
+  const table = seasonTable(games, leagueId);
+  const rankOf = id => { const r = table.find(t => t.id === id); return r ? r : null; };
+  const power = computeStandings(leagueId, false, 'hof', eff.stats).slice(0, 10);
+  const prevWeek = games.filter(g => g.league === leagueId && g.week === week - 1);
+  const milestones = milestonesFor(leagueId, eff, games);
+  const filled = matchups.filter(m => m.a && m.b);
+  const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const cfg = PLAYOFF_CFG[leagueId] || null;
+  const playedMax = games.filter(g => g.league === leagueId).reduce((m, g) => Math.max(m, g.week), 0);
+  const N = cfg ? Math.max(regGames || cfg.games, playedMax) : 0;
+  const entries = cfg ? oddsEntries(games, leagueId) : [];
+  const baseOdds = cfg && entries.length > cfg.spots ? oddsModel(entries, N, cfg.spots, cfg.byes) : null;
+  const oddsByMatch = {};
+  if (baseOdds) filled.forEach((m, i) => { oddsByMatch[i] = matchupOdds(entries, N, cfg, m.a, m.b); });
+  let bigIdx = -1, bigVal = -1;
+  Object.keys(oddsByMatch).forEach(k => {
+    const o = oddsByMatch[k]; const v = Math.abs(o.a.swing) + Math.abs(o.b.swing);
+    if (v > bigVal) { bigVal = v; bigIdx = Number(k); }
+  });
+
+  const h2 = { fontFamily: 'Cinzel, serif', color: '#0f172a', fontSize: '15px', margin: '0 0 8px', borderBottom: '2px solid #c99a2e', paddingBottom: '4px', letterSpacing: '0.04em' };
+  const card = { border: '1px solid #cfe2ff', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' };
+  const small = { fontSize: '11px', color: '#64748b' };
+
+  return (
+    <div id="newsletter-doc" style={{ background: '#ffffff', color: '#0f172a', padding: '28px', fontFamily: 'Inter, sans-serif', maxWidth: '760px', margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', borderBottom: '3px double #c99a2e', paddingBottom: '14px', marginBottom: '18px' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#a67b22', textTransform: 'uppercase' }}>Fantasy Sports Hall of Fame &amp; Museum</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '26px', fontWeight: 700, margin: '6px 0' }}>{league ? league.name : ''}</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '18px', color: '#0e74de' }}>Week {week} Preview</div>
+        <div style={small}>{today}</div>
+      </div>
+
+      {prevWeek.length > 0 && (
+        <div className="nl-avoid" style={{ marginBottom: '18px' }}>
+          <h2 style={h2}>Week {week - 1} Results</h2>
+          {prevWeek.map((g, i) => {
+            const aw = g.aScore >= g.bScore;
+            return (
+              <div key={i} style={{ fontSize: '12px', padding: '3px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                <strong>{aw ? mgrName(g.a) : mgrName(g.b)}</strong> {num2(Math.max(g.aScore, g.bScore))} def. {aw ? mgrName(g.b) : mgrName(g.a)} {num2(Math.min(g.aScore, g.bScore))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ marginBottom: '18px' }}>
+        <h2 style={h2}>This Week's Matchups</h2>
+        {filled.length === 0 && <p style={small}>No matchups selected yet.</p>}
+        {filled.map((m, i) => {
+          const h = isFootball ? getH2H(m.a, m.b, eff.h2h) : null;
+          const ra = rankOf(m.a), rb = rankOf(m.b);
+          const recTxt = r => r ? `${r.w}-${r.l}${r.t ? '-' + r.t : ''} (#${r.rank})` : 'no games yet';
+          return (
+            <div key={i} className="nl-avoid" style={card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '15px', fontWeight: 700 }}>{mgrName(m.a)}</div>
+                  <div style={small}>{SEASON_YEAR}: {recTxt(ra)}</div>
+                </div>
+                <div style={{ color: '#c99a2e', fontWeight: 700 }}>VS</div>
+                <div style={{ flex: 1, textAlign: 'right' }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '15px', fontWeight: 700 }}>{mgrName(m.b)}</div>
+                  <div style={small}>{SEASON_YEAR}: {recTxt(rb)}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#334155' }}>
+                {isFootball ? (
+                  h ? (
+                    <React.Fragment>
+                      <div><strong>All-time series:</strong> {mgrName(m.a)} {h.aWins}–{h.bWins}{h.ties ? '–' + h.ties : ''} {mgrName(m.b)} · Playoffs {h.aPlayoffWins}–{h.bPlayoffWins}</div>
+                      <div><strong>Points scored in series:</strong> {num2(h.aPoints)} vs {num2(h.bPoints)}</div>
+                    </React.Fragment>
+                  ) : <div><strong>All-time series:</strong> First recorded meeting.</div>
+                ) : <div style={small}>No head-to-head log is tracked for baseball.</div>}
+                <div><strong>Last meeting:</strong> {lastMeetingText(games, leagueId, m.a, m.b)}</div>
+              </div>
+              {oddsByMatch[i] && (
+                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cfe2ff', fontSize: '12px', color: '#334155' }}>
+                  <div style={{ fontWeight: 700, color: '#0e74de', marginBottom: '3px' }}>Playoff odds swing{bigIdx === i ? ' — biggest of the week' : ''}</div>
+                  {[['a', m.a], ['b', m.b]].map(([k, id]) => {
+                    const o = oddsByMatch[i][k];
+                    return (
+                      <div key={k}>
+                        <strong>{mgrName(id)}:</strong> {pc(o.now)} now → <span style={{ color: '#15803d' }}>{pc(o.ifWin)} with a win</span> / <span style={{ color: '#b91c1c' }}>{pc(o.ifLose)} with a loss</span> ({Math.round(o.swing * 100)}-pt swing){o.byeNow > 0.03 || o.byeWin > 0.03 ? <span style={small}> · bye odds {pc(o.byeNow)} (win {pc(o.byeWin)} / loss {pc(o.byeLose)})</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {table.length > 0 && (
+        <div className="nl-avoid" style={{ marginBottom: '18px' }}>
+          <h2 style={h2}>{SEASON_YEAR} Standings</h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ background: '#eef6ff', color: '#0369a1', textAlign: 'left' }}>
+                {['#', 'Manager', 'Record', 'PF', 'PA', 'Streak'].map(h => <th key={h} style={{ padding: '5px 6px' }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {table.map(r => (
+                <tr key={r.id} style={{ borderTop: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '4px 6px' }}>{r.rank}</td>
+                  <td style={{ padding: '4px 6px', fontWeight: 600 }}>{r.name}</td>
+                  <td style={{ padding: '4px 6px' }}>{r.w}-{r.l}{r.t ? '-' + r.t : ''}</td>
+                  <td style={{ padding: '4px 6px' }}>{num2(r.pf)}</td>
+                  <td style={{ padding: '4px 6px' }}>{num2(r.pa)}</td>
+                  <td style={{ padding: '4px 6px' }}>{r.streakType ? r.streakType + r.streakLen : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {baseOdds && (
+        <div className="nl-avoid" style={{ marginBottom: '18px' }}>
+          <h2 style={h2}>Playoff Picture</h2>
+          <div style={{ ...small, marginBottom: '6px' }}>{cfg.spots} teams make the playoffs, top {cfg.byes} get byes · {N}-game regular season. Odds use current wins, win % (regressed toward .500) and games remaining versus the projected cutoff.</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ background: '#eef6ff', color: '#0369a1', textAlign: 'left' }}>
+                {['#', 'Manager', 'Record', 'Proj. Wins', 'Playoff %', 'Bye %'].map(h => <th key={h} style={{ padding: '5px 6px' }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {entries.slice().sort((a, b) => baseOdds[a.id].rank - baseOdds[b.id].rank).map(e => {
+                const o = baseOdds[e.id]; const t = table.find(x => x.id === e.id);
+                return (
+                  <tr key={e.id} style={{ borderTop: o.rank === cfg.spots + 1 ? '2px solid #c99a2e' : '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px' }}>{o.rank}</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 600 }}>{mgrName(e.id)}</td>
+                    <td style={{ padding: '4px 6px' }}>{t ? `${t.w}-${t.l}${t.t ? '-' + t.t : ''}` : '0-0'}</td>
+                    <td style={{ padding: '4px 6px' }}>{o.mu.toFixed(1)}</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>{pc(o.po)}</td>
+                    <td style={{ padding: '4px 6px' }}>{pc(o.bye)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="nl-avoid" style={{ marginBottom: '18px' }}>
+        <h2 style={h2}>All-Time Power Rankings</h2>
+        <div style={{ ...small, marginBottom: '6px' }}>Ranked by HOF Score (title rate + playoff rate + win rate + longevity), active managers.</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+          <thead>
+            <tr style={{ background: '#eef6ff', color: '#0369a1', textAlign: 'left' }}>
+              {['#', 'Manager', 'HOF Score', 'Titles', 'Career Record', 'Win %'].map(h => <th key={h} style={{ padding: '5px 6px' }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {power.map(r => (
+              <tr key={r.managerId} style={{ borderTop: '1px solid #e2e8f0' }}>
+                <td style={{ padding: '4px 6px' }}>{r.rank}</td>
+                <td style={{ padding: '4px 6px', fontWeight: 600 }}>{r.name}</td>
+                <td style={{ padding: '4px 6px' }}>{r.hofScore.toFixed(1)}</td>
+                <td style={{ padding: '4px 6px' }}>{r.championships}</td>
+                <td style={{ padding: '4px 6px' }}>{r.wins}-{r.losses}-{r.ties}</td>
+                <td style={{ padding: '4px 6px' }}>{pct(r.winPct)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="nl-avoid" style={{ marginBottom: '6px' }}>
+        <h2 style={h2}>Milestone Watch</h2>
+        {milestones.length === 0
+          ? <p style={small}>No milestones within range this week.</p>
+          : <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', lineHeight: 1.6 }}>{milestones.map((t, i) => <li key={i}>{t}</li>)}</ul>}
+      </div>
+    </div>
+  );
+}
+
+function NewsletterBuilder({ unlocked, live, eff }) {
+  const availableLeagues = DATA.leagues.filter(l => unlocked.includes(l.id));
+  const [leagueId, setLeagueId] = useState(() => (availableLeagues.find(l => l.id === live.defaultLeague) || availableLeagues[0] || DATA.leagues[0]).id);
+  const maxWeek = useMemo(() => {
+    const ws = live.parsed.games.filter(g => g.league === leagueId).map(g => g.week);
+    return ws.length ? Math.max(...ws) : 0;
+  }, [live.parsed.games, leagueId]);
+  const [week, setWeek] = useState(() => maxWeek + 1);
+  const [matchups, setMatchups] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [regGames, setRegGames] = useState(() => (PLAYOFF_CFG[leagueId] || {}).games || 0);
+  useEffect(() => { setRegGames((PLAYOFF_CFG[leagueId] || {}).games || 0); }, [leagueId]);
+
+  const ids = useMemo(() => activeManagerIds(leagueId, live.parsed.games), [leagueId, live.parsed.games]);
+  const slotCount = Math.max(1, Math.floor(ids.length / 2));
+  const storeKey = `hof_newsletter_${leagueId}_${week}`;
+
+  // load saved matchups when league/week changes
+  useEffect(() => {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(storeKey) || 'null'); } catch (e) {}
+    const base = Array.from({ length: slotCount }, (_, i) => (saved && saved[i]) || { a: '', b: '' });
+    setMatchups(base);
+  }, [storeKey, slotCount]);
+
+  // jump to next unplayed week when the sheet loads or league changes
+  useEffect(() => { setWeek(maxWeek + 1); }, [leagueId, maxWeek]);
+
+  function updateMatchups(next) {
+    setMatchups(next);
+    try { localStorage.setItem(storeKey, JSON.stringify(next)); } catch (e) {}
+  }
+  function setSlot(i, side, val) {
+    const next = matchups.map((m, j) => j === i ? { ...m, [side]: val } : m);
+    updateMatchups(next);
+  }
+  const used = new Set();
+  matchups.forEach(m => { if (m.a) used.add(m.a); if (m.b) used.add(m.b); });
+
+  function MgrSelect({ value, onChange }) {
+    return (
+      <select value={value} onChange={e => onChange(e.target.value)} className="w-full bg-white border border-sky-200 rounded-md px-2 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">
+        <option value="">Select…</option>
+        {ids.filter(id => id === value || !used.has(id)).map(id => <option key={id} value={id}>{mgrName(id)}</option>)}
+      </select>
+    );
+  }
+
+  function exportPdf() {
+    const el = document.getElementById('newsletter-doc');
+    if (!el) return;
+    if (typeof html2pdf === 'undefined') {
+      alert('PDF library did not load. Check your connection and refresh the page.');
+      return;
+    }
+    setExporting(true);
+    const lg = getLeague(leagueId);
+    const fname = `${(lg ? lg.name : 'league').replace(/[^a-z0-9]+/gi, '-')}-Week-${week}-Newsletter.pdf`;
+    html2pdf().set({
+      margin: [10, 10, 10, 10],
+      filename: fname,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.nl-avoid'] },
+    }).from(el).save().then(() => setExporting(false)).catch(() => setExporting(false));
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="mb-6">
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Commissioner Tools</p>
+        <h2 className="font-serif text-3xl text-slate-800">📰 Weekly Newsletter Builder</h2>
+      </div>
+
+      <LiveDataPanel live={live} compact={false} />
+
+      <div className="bg-white border border-sky-100 rounded-lg shadow-gold-glow p-5 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+          <div className="sm:col-span-2">
+            <label className="block text-xs text-slate-500 mb-1">League</label>
+            <select value={leagueId} onChange={e => setLeagueId(e.target.value)} className="w-full bg-white border border-sky-200 rounded-md px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">
+              {availableLeagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Week</label>
+            <select value={week} onChange={e => setWeek(parseInt(e.target.value, 10))} className="w-full bg-white border border-sky-200 rounded-md px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">
+              {Array.from({ length: 18 }, (_, i) => i + 1).map(w => <option key={w} value={w}>Week {w}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {PLAYOFF_CFG[leagueId] ? (
+          <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+            <span>Playoff odds on: {PLAYOFF_CFG[leagueId].spots} teams, top {PLAYOFF_CFG[leagueId].byes} get byes.</span>
+            <label className="flex items-center gap-2">Regular-season games:
+              <input type="number" min="1" max="20" value={regGames} onChange={e => setRegGames(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-16 border border-sky-200 rounded px-2 py-1" />
+            </label>
+          </div>
+        ) : <p className="mb-5 text-xs text-slate-400">Playoff odds are only included for Horner and Battle of the Sexes.</p>}
+
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-3">Matchups</p>
+        <div className="space-y-3">
+          {matchups.map((m, i) => (
+            <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <MgrSelect value={m.a} onChange={v => setSlot(i, 'a', v)} />
+              <span className="text-amber-600 font-serif text-sm">VS</span>
+              <MgrSelect value={m.b} onChange={v => setSlot(i, 'b', v)} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button onClick={() => updateMatchups(matchups.map(() => ({ a: '', b: '' })))} className="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 rounded-md px-3 py-1.5">Clear matchups</button>
+          <button onClick={exportPdf} disabled={exporting} className="text-sm bg-gradient-to-b from-amber-400 to-amber-600 text-white font-serif font-bold px-5 py-2 rounded-md shadow-sm hover:brightness-105 disabled:opacity-50">
+            {exporting ? 'Building PDF…' : '⬇ Download Newsletter PDF'}
+          </button>
+        </div>
+      </div>
+
+      <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">Preview</p>
+      <div className="border border-sky-100 rounded-lg shadow-gold-glow bg-white overflow-x-auto">
+        <NewsletterDoc leagueId={leagueId} week={week} matchups={matchups} eff={eff} games={live.parsed.games} regGames={regGames} />
+      </div>
     </div>
   );
 }
@@ -5167,6 +5991,17 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
               {ex.id === 'master' ? '👑 ' : ''}{ex.name}
             </button>
           ))}
+          <button
+            onClick={() => onSwitch('newsletter')}
+            className={
+              "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
+              (currentId === 'newsletter'
+                ? "bg-amber-50 border-amber-300 text-amber-700"
+                : "border-transparent text-slate-400 hover:text-amber-700 hover:border-amber-200")
+            }
+          >
+            📰 Newsletter
+          </button>
         </div>
         <button
           onClick={onLock}
@@ -5193,6 +6028,60 @@ function App() {
   const [includeAlumni, setIncludeAlumni] = useState(false);
   const [selectedManager, setSelectedManager] = useState(null);
 
+  // ---- live sheet state ----
+  const initPrefs = useMemo(() => loadPrefs(), []);
+  const [defaultLeague, setDefaultLeagueRaw] = useState(initPrefs.league);
+  const [includeLive, setIncludeLiveRaw] = useState(initPrefs.includeLive);
+  const [overrides, setOverridesRaw] = useState(initPrefs.overrides);
+  const [csvText, setCsvText] = useState(() => { try { return localStorage.getItem(LIVE_CSV_KEY) || ''; } catch (e) { return ''; } });
+  const [status, setStatus] = useState({ state: 'idle', error: null, fetchedAt: null });
+
+  function persistPrefs(patch) {
+    savePrefs({ league: defaultLeague, includeLive, overrides, ...patch });
+  }
+  const setDefaultLeague = v => { setDefaultLeagueRaw(v); persistPrefs({ league: v }); };
+  const setIncludeLive = v => { setIncludeLiveRaw(v); persistPrefs({ includeLive: v }); };
+  const setOverride = (id, v) => {
+    const next = { ...overrides };
+    if (v === '' || isNaN(parseInt(v, 10))) delete next[id]; else next[id] = String(Math.max(0, parseInt(v, 10)));
+    setOverridesRaw(next); persistPrefs({ overrides: next });
+  };
+
+  async function refresh() {
+    setStatus(s => ({ ...s, state: 'loading', error: null }));
+    try {
+      const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('sheet is not published as CSV');
+      setCsvText(text);
+      try { localStorage.setItem(LIVE_CSV_KEY, text); } catch (e) {}
+      setStatus({ state: 'ok', error: null, fetchedAt: new Date() });
+    } catch (err) {
+      setStatus(s => ({ state: 'error', error: err.message || 'network error', fetchedAt: s.fetchedAt }));
+    }
+  }
+  function applyPaste(text) {
+    setCsvText(text);
+    try { localStorage.setItem(LIVE_CSV_KEY, text); } catch (e) {}
+    setStatus({ state: 'ok', error: null, fetchedAt: new Date() });
+  }
+  useEffect(() => { refresh(); }, []);
+
+  const parsed = useMemo(() => parseLive(csvText, defaultLeague), [csvText, defaultLeague]);
+  const detected = useMemo(() => detectBaselines(parsed.games), [parsed]);
+  const baselines = useMemo(() => {
+    const o = {};
+    DATA.leagues.forEach(l => {
+      const ov = overrides[l.id];
+      o[l.id] = (ov !== undefined && ov !== '' && !isNaN(parseInt(ov, 10))) ? { weeks: parseInt(ov, 10), reason: 'manual' } : (detected[l.id] || { weeks: 0, reason: '' });
+    });
+    return o;
+  }, [detected, overrides]);
+  const calcGames = useMemo(() => (includeLive ? parsed.games.filter(g => g.week > ((baselines[g.league] || {}).weeks || 0)) : []), [parsed, includeLive, baselines]);
+  const eff = useMemo(() => applyLive(calcGames), [calcGames]);
+  const live = { parsed, status, refresh, includeLive, setIncludeLive, baselines, detected, overrides, setOverride, defaultLeague, setDefaultLeague, applyPaste };
+
   function handleUnlockSuccess(exhibit, mode) {
     let next;
     if (exhibit.id === 'master' && mode === 'all') {
@@ -5215,12 +6104,32 @@ function App() {
   }
 
   function handleLock() {
-    localStorage.removeItem(STORAGE_KEY);
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     setUnlocked([]);
     setView(null);
   }
 
   const currentExhibit = ALL_EXHIBITS.find(e => e.id === view) || null;
+  const newsletterLeagues = DATA.leagues.filter(l => unlocked.includes(l.id));
+
+  let body;
+  if (view === 'newsletter' && newsletterLeagues.length > 0) {
+    body = <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} />;
+  } else if (!view || !currentExhibit) {
+    body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} onNewsletter={() => setView('newsletter')} />;
+  } else {
+    body = (
+      <ExhibitView
+        key={currentExhibit.id}
+        exhibit={currentExhibit}
+        includeAlumni={includeAlumni}
+        setIncludeAlumni={setIncludeAlumni}
+        onSelectManager={setSelectedManager}
+        eff={eff}
+        live={live}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -5234,16 +6143,7 @@ function App() {
         />
       )}
 
-      {(!view || !currentExhibit) ? (
-        <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} />
-      ) : (
-        <ExhibitView
-          exhibit={currentExhibit}
-          includeAlumni={includeAlumni}
-          setIncludeAlumni={setIncludeAlumni}
-          onSelectManager={setSelectedManager}
-        />
-      )}
+      {body}
 
       {pinTarget && (
         <PinModal
@@ -5256,12 +6156,13 @@ function App() {
       {selectedManager && (
         <ManagerPlaqueModal
           managerId={selectedManager}
+          eff={eff}
           onClose={() => setSelectedManager(null)}
         />
       )}
 
       <footer className="text-center text-slate-300 text-xs py-10">
-        Fantasy Sports Hall of Fame & Museum — Est. this season · All records are self-contained, no server required.
+        Fantasy Sports Hall of Fame & Museum — Est. this season · Live results sync from the weekly Google Sheet.
       </footer>
     </div>
   );

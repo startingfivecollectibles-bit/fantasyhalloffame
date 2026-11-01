@@ -4322,6 +4322,7 @@ const STORAGE_KEY = 'hof_unlocked_exhibits_v1';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTHarc2GTnYC9ntr__erNMVTz9UmaQbGS6tuO6oEe976DHPL_PhZhLB5EQ4RRp9GCM9WM2Iv6MgflQ/pub?gid=348141357&single=true&output=csv';
 const LIVE_CSV_KEY = 'hof_live_csv_v1';
 const LIVE_PREF_KEY = 'hof_live_prefs_v1';
+const ADMIN_KEY = 'hof_admin_v1';
 const SEASON_YEAR = 2026;
 
 /* =========================================================
@@ -4342,9 +4343,9 @@ function loadPrefs() {
   try {
     const raw = localStorage.getItem(LIVE_PREF_KEY);
     const p = raw ? JSON.parse(raw) : {};
-    return { league: p.league || 'work', includeLive: p.includeLive !== false, overrides: p.overrides || {} };
+    return { includeLive: p.includeLive !== false, overrides: p.overrides || {} };
   } catch (e) {
-    return { league: 'work', includeLive: true, overrides: {} };
+    return { includeLive: true, overrides: {} };
   }
 }
 function savePrefs(p) {
@@ -4431,7 +4432,7 @@ function leagueFromText(txt) {
   if (t.includes('baseball') || t.includes('memorial league')) return 'baseball';
   return null;
 }
-function parseLive(csvText, defaultLeague) {
+function parseLive(csvText) {
   const empty = { games: [], diag: { headers: [], rowCount: 0, parsed: 0, skipped: [], unmatched: [], unmatchedLeagues: [], leagueIdx: -1, leagueCounts: {}, weeks: [], note: '' } };
   if (!csvText || !csvText.trim()) return empty;
   const rows = parseCSV(csvText);
@@ -4462,14 +4463,12 @@ function parseLive(csvText, defaultLeague) {
       if (w) week = w;
     }
     if (!week) { skipped.push({ row: r + 1, reason: 'No week number found' }); continue; }
-    let league = defaultLeague;
-    if (leagueIdx >= 0) {
-      const rawLeague = String(row[leagueIdx] || '').trim();
-      if (rawLeague) {
-        const l = leagueFromText(rawLeague);
-        if (!l) { unmatchedLeagues.add(rawLeague); skipped.push({ row: r + 1, reason: `Unrecognized league "${rawLeague}"` }); continue; }
-        league = l;
-      }
+    const rawLeague = leagueIdx >= 0 ? String(row[leagueIdx] || '').trim() : '';
+    const league = leagueFromText(rawLeague);
+    if (!league) {
+      if (rawLeague) unmatchedLeagues.add(rawLeague);
+      skipped.push({ row: r + 1, reason: rawLeague ? `Unrecognized league "${rawLeague}"` : 'League is blank or the League column was not found' });
+      continue;
     }
     const names = [], nums = [];
     for (let c = 0; c < row.length; c++) {
@@ -4653,10 +4652,9 @@ function matchupOdds(entries, N, cfg, aId, bId) {
 }
 function pc(x) { return Math.round(x * 100) + '%'; }
 
-/* Dinner Watch (Jon Bought Dinner has no playoffs; last place buys dinner at the draft;
-   Week 14 re-seeds the matchups 1v2, 3v4, ...). Monte Carlo over the remaining games:
-   each team wins a game with probability (W+3)/(G+6). Reports odds of finishing last and
-   odds of being top 2 after Week 13 (the 1-vs-2 showdown). */
+/* League race (Jon Bought Dinner has no playoffs: the best final record wins the league and
+   last place buys dinner at the draft). Monte Carlo over the remaining games: each team wins
+   a game with probability (W+3)/(G+6). Reports odds of the best final record and the worst. */
 const LAST_CFG = { football2: { games: 18, seedGames: 13 } };
 function mulberry32(a) {
   return function () {
@@ -4675,32 +4673,26 @@ function simDinner(entries, N, seedGames, force) {
   });
   const bin = (n, p) => { let c = 0; for (let i = 0; i < n; i++) if (rng() < p) c++; return c; };
   const SIMS = 6000;
-  const last = {}, top2 = {};
-  teams.forEach(t => { last[t.id] = 0; top2[t.id] = 0; });
+  const last = {}, champ = {};
+  teams.forEach(t => { last[t.id] = 0; champ[t.id] = 0; });
   for (let s = 0; s < SIMS; s++) {
-    let lastId = null, lastScore = Infinity;
-    const seeds = [];
+    let lastId = null, lastScore = Infinity, champId = null, champScore = -Infinity;
     teams.forEach(t => {
-      const w13 = t.w + bin(Math.max(0, seedGames - t.g), t.p);
-      const fin = w13 + bin(Math.max(0, N - Math.max(t.g, seedGames)), t.p);
-      const tb = t.pf * 1e-7 + rng() * 1e-3;
-      seeds.push({ id: t.id, v: w13 + tb });
-      if (fin + tb < lastScore) { lastScore = fin + tb; lastId = t.id; }
+      const fin = t.w + bin(Math.max(0, N - t.g), t.p) + t.pf * 1e-7 + rng() * 1e-3;
+      if (fin < lastScore) { lastScore = fin; lastId = t.id; }
+      if (fin > champScore) { champScore = fin; champId = t.id; }
     });
-    last[lastId]++;
-    seeds.sort((a, b) => b.v - a.v);
-    if (seeds[0]) top2[seeds[0].id]++;
-    if (seeds[1]) top2[seeds[1].id]++;
+    last[lastId]++; champ[champId]++;
   }
   const out = {};
-  teams.forEach(t => { out[t.id] = { last: last[t.id] / SIMS, top2: top2[t.id] / SIMS, mu: t.w + Math.max(0, N - t.g) * t.p }; });
+  teams.forEach(t => { out[t.id] = { last: last[t.id] / SIMS, champ: champ[t.id] / SIMS, mu: t.w + Math.max(0, N - t.g) * t.p }; });
   return out;
 }
 function dinnerMatchup(entries, N, seedGames, aId, bId) {
   const base = simDinner(entries, N, seedGames, null);
   const aWin = simDinner(entries, N, seedGames, { win: aId, lose: bId });
   const bWin = simDinner(entries, N, seedGames, { win: bId, lose: aId });
-  const side = (me, W, L) => ({ lastNow: base[me].last, lastWin: W[me].last, lastLose: L[me].last, topNow: base[me].top2, topWin: W[me].top2, topLose: L[me].top2 });
+  const side = (me, W, L) => ({ lastNow: base[me].last, lastWin: W[me].last, lastLose: L[me].last, champNow: base[me].champ, champWin: W[me].champ, champLose: L[me].champ });
   return { a: side(aId, aWin, bWin), b: side(bId, bWin, aWin) };
 }
 
@@ -4899,7 +4891,7 @@ function PinModal({ exhibit, onClose, onSuccess }) {
 /* =========================================================
    LOBBY
    ========================================================= */
-function Lobby({ unlocked, onSelect, onNewsletter }) {
+function Lobby({ unlocked, onSelect, onNewsletter, admin, onSettings }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-14">
@@ -4955,6 +4947,18 @@ function Lobby({ unlocked, onSelect, onNewsletter }) {
             </div>
             <span className="text-sky-600 text-sm font-medium whitespace-nowrap">Open →</span>
           </button>
+          {admin && (
+            <button
+              onClick={onSettings}
+              className="vault-card mt-4 w-full text-left plaque-texture border border-slate-200 shadow-gold-glow hover:border-slate-400 rounded-lg p-6 flex items-center justify-between gap-4"
+            >
+              <div>
+                <h3 className="font-serif text-lg text-slate-800">⚙️ Settings</h3>
+                <p className="text-slate-400 text-xs mt-1">Live 2026 sheet data, baselines and sync status (commissioner only).</p>
+              </div>
+              <span className="text-slate-600 text-sm font-medium whitespace-nowrap">Open →</span>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -4969,10 +4973,9 @@ function detectedWeeks(live, id) {
   return d ? d.weeks : 0;
 }
 function LiveDataPanel({ live, compact }) {
-  const { parsed, status, refresh, includeLive, setIncludeLive, baselines, overrides, setOverride, defaultLeague, setDefaultLeague, applyPaste } = live;
+  const { parsed, status, refresh, includeLive, setIncludeLive, baselines, overrides, setOverride, applyPaste } = live;
   const [paste, setPaste] = useState('');
   const d = parsed.diag;
-  const footballLeagues = DATA.leagues;
   const weeksTxt = d.weeks.length ? `Weeks ${d.weeks[0]}–${d.weeks[d.weeks.length - 1]}` : 'No weeks yet';
 
   return (
@@ -4997,12 +5000,6 @@ function LiveDataPanel({ live, compact }) {
           <input type="checkbox" checked={includeLive} onChange={e => setIncludeLive(e.target.checked)} />
           Add live results to career records
         </label>
-        <label className="flex items-center gap-2">
-          League for rows with a blank League value:
-          <select value={defaultLeague} onChange={e => setDefaultLeague(e.target.value)} className="border border-sky-200 rounded px-2 py-1 bg-white">
-            {footballLeagues.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-        </label>
       </div>
 
       <div className="mt-3 text-xs text-slate-600">
@@ -5026,7 +5023,7 @@ function LiveDataPanel({ live, compact }) {
         <div className="mt-2 text-xs text-slate-600 space-y-2">
           <p><strong>Columns detected:</strong> {d.headers.length ? d.headers.join(' | ') : '—'}</p>
           <p><strong>Rows read:</strong> {d.rowCount} · <strong>Games parsed:</strong> {d.parsed} · <strong>Skipped:</strong> {d.skipped.length}</p>
-          <p><strong>League column:</strong> {d.leagueIdx >= 0 ? `found ("${d.headers[d.leagueIdx]}")` : 'not found — all rows use the fallback league'} · <strong>Games by league:</strong> {Object.keys(d.leagueCounts).length ? Object.keys(d.leagueCounts).map(k => `${(getLeague(k) || {}).name}: ${d.leagueCounts[k]}`).join(' · ') : '—'}</p>
+          <p><strong>League column:</strong> {d.leagueIdx >= 0 ? `found ("${d.headers[d.leagueIdx]}")` : 'NOT FOUND — rows cannot be routed to a league'} · <strong>Games by league:</strong> {Object.keys(d.leagueCounts).length ? Object.keys(d.leagueCounts).map(k => `${(getLeague(k) || {}).name}: ${d.leagueCounts[k]}`).join(' · ') : '—'}</p>
           {d.unmatchedLeagues && d.unmatchedLeagues.length > 0 && <p className="text-amber-700"><strong>League values not recognized:</strong> {d.unmatchedLeagues.join(', ')}</p>}
           {d.unmatched.length > 0 && <p className="text-amber-700"><strong>Names not matched to a manager:</strong> {d.unmatched.join(', ')}</p>}
           {d.skipped.length > 0 && (
@@ -5639,9 +5636,7 @@ function ExhibitView({ exhibit, includeAlumni, setIncludeAlumni, onSelectManager
         </label>
       </div>
 
-      <LiveDataPanel live={live} compact={true} />
-
-      {DATA.notes && DATA.notes[exhibit.id] && (
+            {DATA.notes && DATA.notes[exhibit.id] && (
         <p className="text-slate-400 text-xs italic mb-4 bg-sky-50 border border-sky-100 rounded-md px-3 py-2">
           ℹ️ {DATA.notes[exhibit.id]}
         </p>
@@ -5800,13 +5795,13 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
               </div>
               {dByMatch[i] && (
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cfe2ff', fontSize: '12px', color: '#334155' }}>
-                  <div style={{ fontWeight: 700, color: '#0e74de', marginBottom: '3px' }}>Dinner watch &amp; Week 14 showdown odds</div>
+                  <div style={{ fontWeight: 700, color: '#0e74de', marginBottom: '3px' }}>League title &amp; dinner odds</div>
                   {[['a', m.a], ['b', m.b]].map(([k, id]) => {
                     const o = dByMatch[i][k];
                     return (
-                      <div key={k}>
-                        <strong>{mgrName(id)}:</strong> last place {pc(o.lastNow)} now → <span style={{ color: '#15803d' }}>{pc(o.lastWin)} with a win</span> / <span style={{ color: '#b91c1c' }}>{pc(o.lastLose)} with a loss</span>
-                        <span style={small}> · top-2 {pc(o.topNow)} (win {pc(o.topWin)} / loss {pc(o.topLose)})</span>
+                      <div key={k} style={{ marginBottom: '3px' }}>
+                        <div><strong>{mgrName(id)}:</strong> wins the league {pc(o.champNow)} now → <span style={{ color: '#15803d' }}>{pc(o.champWin)} with a win</span> / <span style={{ color: '#b91c1c' }}>{pc(o.champLose)} with a loss</span></div>
+                        <div style={{ paddingLeft: '12px' }}>buys dinner (last place) {pc(o.lastNow)} now → <span style={{ color: '#15803d' }}>{pc(o.lastWin)} with a win</span> / <span style={{ color: '#b91c1c' }}>{pc(o.lastLose)} with a loss</span></div>
                       </div>
                     );
                   })}
@@ -5857,12 +5852,12 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
 
       {dBase && (
         <div className="nl-avoid" style={{ marginBottom: '18px' }}>
-          <h2 style={h2}>Dinner Watch</h2>
-          <div style={{ ...small, marginBottom: '6px' }}>No playoffs: last place buys dinner at the draft. In Week 14 matchups re-seed 1 vs 2, 3 vs 4 and so on, so top-2 odds are for the 1-vs-2 showdown. {dN}-game season; odds use current wins, win % (regressed toward .500) and games remaining.</div>
+          <h2 style={h2}>League Race</h2>
+          <div style={{ ...small, marginBottom: '6px' }}>No playoffs: the best final record wins the league and last place buys dinner at the draft. {dN}-game season; odds use current wins, win % (regressed toward .500) and games remaining.</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: '#eef6ff', color: '#0369a1', textAlign: 'left' }}>
-                {['#', 'Manager', 'Record', 'Proj. Wins', 'Buys Dinner (Last) %', 'Top-2 %'].map(h => <th key={h} style={{ padding: '5px 6px' }}>{h}</th>)}
+                {['#', 'Manager', 'Record', 'Proj. Wins', 'Wins League %', 'Buys Dinner (Last) %'].map(h => <th key={h} style={{ padding: '5px 6px' }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -5874,8 +5869,8 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
                     <td style={{ padding: '4px 6px', fontWeight: 600 }}>{mgrName(e.id)}</td>
                     <td style={{ padding: '4px 6px' }}>{t ? `${t.w}-${t.l}${t.t ? '-' + t.t : ''}` : '0-0'}</td>
                     <td style={{ padding: '4px 6px' }}>{o.mu.toFixed(1)}</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>{pc(o.champ)}</td>
                     <td style={{ padding: '4px 6px', fontWeight: 700, color: o.last >= 0.25 ? '#b91c1c' : '#0f172a' }}>{pc(o.last)}</td>
-                    <td style={{ padding: '4px 6px' }}>{pc(o.top2)}</td>
                   </tr>
                 );
               })}
@@ -5949,7 +5944,7 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
 
 function NewsletterBuilder({ unlocked, live, eff }) {
   const availableLeagues = DATA.leagues.filter(l => unlocked.includes(l.id));
-  const [leagueId, setLeagueId] = useState(() => (availableLeagues.find(l => l.id === live.defaultLeague) || availableLeagues[0] || DATA.leagues[0]).id);
+  const [leagueId, setLeagueId] = useState(() => (availableLeagues[0] || DATA.leagues[0]).id);
   const maxWeek = useMemo(() => {
     const ws = live.parsed.games.filter(g => g.league === leagueId).map(g => g.week);
     return ws.length ? Math.max(...ws) : 0;
@@ -6076,7 +6071,9 @@ function NewsletterBuilder({ unlocked, live, eff }) {
         <h2 className="font-serif text-3xl text-slate-800">📰 Weekly Newsletter Builder</h2>
       </div>
 
-      <LiveDataPanel live={live} compact={false} />
+      <p className="text-xs text-slate-400 mb-4">
+        {live.parsed.diag.weeks.length ? `Using sheet results through Week ${live.parsed.diag.weeks[live.parsed.diag.weeks.length - 1]}.` : 'No sheet results loaded yet.'}
+      </p>
 
       <div className="bg-white border border-sky-100 rounded-lg shadow-gold-glow p-5 mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
@@ -6096,12 +6093,12 @@ function NewsletterBuilder({ unlocked, live, eff }) {
 
         {(PLAYOFF_CFG[leagueId] || LAST_CFG[leagueId]) ? (
           <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-600">
-            <span>{PLAYOFF_CFG[leagueId] ? `Playoff odds on: ${PLAYOFF_CFG[leagueId].spots} teams, top ${PLAYOFF_CFG[leagueId].byes} get byes.` : 'Dinner Watch on: odds of finishing last (buys dinner) and of being top 2 for the Week 14 showdown.'}</span>
+            <span>{PLAYOFF_CFG[leagueId] ? `Playoff odds on: ${PLAYOFF_CFG[leagueId].spots} teams, top ${PLAYOFF_CFG[leagueId].byes} get byes.` : 'League odds on: chance to win the league (best final record), then chance of finishing last (buys dinner).'}</span>
             <label className="flex items-center gap-2">Regular-season games:
               <input type="number" min="1" max="20" value={regGames} onChange={e => setRegGames(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-16 border border-sky-200 rounded px-2 py-1" />
             </label>
           </div>
-        ) : <p className="mb-5 text-xs text-slate-400">Odds are included for Horner, Battle of the Sexes (playoffs) and Jon Bought Dinner (dinner watch).</p>}
+        ) : <p className="mb-5 text-xs text-slate-400">Odds are included for Horner, Battle of the Sexes (playoffs) and Jon Bought Dinner (league race).</p>}
 
         <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-3">Matchups</p>
         <div className="space-y-3">
@@ -6130,9 +6127,24 @@ function NewsletterBuilder({ unlocked, live, eff }) {
 }
 
 /* =========================================================
+   SETTINGS (commissioner only)
+   ========================================================= */
+function SettingsView({ live }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="mb-6">
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Commissioner Only</p>
+        <h2 className="font-serif text-3xl text-slate-800">⚙️ Settings</h2>
+      </div>
+      <LiveDataPanel live={live} compact={false} />
+    </div>
+  );
+}
+
+/* =========================================================
    HEADER / TABS
    ========================================================= */
-function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
+function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby, admin }) {
   const tabs = ALL_EXHIBITS.filter(ex => unlocked.includes(ex.id));
   return (
     <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-sky-100 shadow-sm">
@@ -6166,6 +6178,19 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby }) {
           >
             📰 Newsletter
           </button>
+          {admin && (
+            <button
+              onClick={() => onSwitch('settings')}
+              className={
+                "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
+                (currentId === 'settings'
+                  ? "bg-slate-100 border-slate-300 text-slate-700"
+                  : "border-transparent text-slate-400 hover:text-slate-700 hover:border-slate-200")
+              }
+            >
+              ⚙️ Settings
+            </button>
+          )}
         </div>
         <button
           onClick={onLock}
@@ -6188,22 +6213,21 @@ function App() {
     if (u.length === 0) return null;
     return u.includes('master') ? 'master' : u[0];
   });
+  const [admin, setAdmin] = useState(() => { try { return localStorage.getItem(ADMIN_KEY) === '1'; } catch (e) { return false; } });
   const [pinTarget, setPinTarget] = useState(null);
   const [includeAlumni, setIncludeAlumni] = useState(false);
   const [selectedManager, setSelectedManager] = useState(null);
 
   // ---- live sheet state ----
   const initPrefs = useMemo(() => loadPrefs(), []);
-  const [defaultLeague, setDefaultLeagueRaw] = useState(initPrefs.league);
   const [includeLive, setIncludeLiveRaw] = useState(initPrefs.includeLive);
   const [overrides, setOverridesRaw] = useState(initPrefs.overrides);
   const [csvText, setCsvText] = useState(() => { try { return localStorage.getItem(LIVE_CSV_KEY) || ''; } catch (e) { return ''; } });
   const [status, setStatus] = useState({ state: 'idle', error: null, fetchedAt: null });
 
   function persistPrefs(patch) {
-    savePrefs({ league: defaultLeague, includeLive, overrides, ...patch });
+    savePrefs({ includeLive, overrides, ...patch });
   }
-  const setDefaultLeague = v => { setDefaultLeagueRaw(v); persistPrefs({ league: v }); };
   const setIncludeLive = v => { setIncludeLiveRaw(v); persistPrefs({ includeLive: v }); };
   const setOverride = (id, v) => {
     const next = { ...overrides };
@@ -6232,7 +6256,7 @@ function App() {
   }
   useEffect(() => { refresh(); }, []);
 
-  const parsed = useMemo(() => parseLive(csvText, defaultLeague), [csvText, defaultLeague]);
+  const parsed = useMemo(() => parseLive(csvText), [csvText]);
   const detected = useMemo(() => detectBaselines(parsed.games), [parsed]);
   const baselines = useMemo(() => {
     const o = {};
@@ -6244,7 +6268,7 @@ function App() {
   }, [detected, overrides]);
   const calcGames = useMemo(() => (includeLive ? parsed.games.filter(g => g.week > ((baselines[g.league] || {}).weeks || 0)) : []), [parsed, includeLive, baselines]);
   const eff = useMemo(() => applyLive(calcGames), [calcGames]);
-  const live = { parsed, status, refresh, includeLive, setIncludeLive, baselines, detected, overrides, setOverride, defaultLeague, setDefaultLeague, applyPaste };
+  const live = { parsed, status, refresh, includeLive, setIncludeLive, baselines, detected, overrides, setOverride, applyPaste };
 
   function handleUnlockSuccess(exhibit, mode) {
     let next;
@@ -6252,6 +6276,10 @@ function App() {
       next = Array.from(new Set([...unlocked, ...ALL_EXHIBITS.map(e => e.id)]));
     } else {
       next = Array.from(new Set([...unlocked, exhibit.id]));
+    }
+    if (exhibit.id === 'master' && mode === 'all') {
+      setAdmin(true);
+      try { localStorage.setItem(ADMIN_KEY, '1'); } catch (e) {}
     }
     setUnlocked(next);
     saveUnlocked(next);
@@ -6268,7 +6296,8 @@ function App() {
   }
 
   function handleLock() {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(ADMIN_KEY); } catch (e) {}
+    setAdmin(false);
     setUnlocked([]);
     setView(null);
   }
@@ -6279,8 +6308,10 @@ function App() {
   let body;
   if (view === 'newsletter' && newsletterLeagues.length > 0) {
     body = <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} />;
+  } else if (view === 'settings' && admin) {
+    body = <SettingsView live={live} />;
   } else if (!view || !currentExhibit) {
-    body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} onNewsletter={() => setView('newsletter')} />;
+    body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} onNewsletter={() => setView('newsletter')} admin={admin} onSettings={() => setView('settings')} />;
   } else {
     body = (
       <ExhibitView
@@ -6304,6 +6335,7 @@ function App() {
           onSwitch={setView}
           onLock={handleLock}
           onGoLobby={() => setView(null)}
+          admin={admin}
         />
       )}
 

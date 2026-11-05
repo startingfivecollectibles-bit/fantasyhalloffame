@@ -4323,6 +4323,14 @@ const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTHarc2G
 const LIVE_CSV_KEY = 'hof_live_csv_v1';
 const LIVE_PREF_KEY = 'hof_live_prefs_v1';
 const ADMIN_KEY = 'hof_admin_v1';
+const TRADES_KEY = 'hof_trades_v1';
+const TRADE_LEAGUES = ['work', 'football2', 'football3'];
+function loadTrades() {
+  try { const t = JSON.parse(localStorage.getItem(TRADES_KEY) || '[]'); return Array.isArray(t) ? t : []; } catch (e) { return []; }
+}
+function saveTrades(list) { try { localStorage.setItem(TRADES_KEY, JSON.stringify(list)); } catch (e) {} }
+function tradeSort(x, y) { return (x.week || 0) - (y.week || 0) || (x.ts || 0) - (y.ts || 0); }
+function tradeWhen(t) { return `Week ${t.week}` + (t.dateText ? ` · ${t.dateText}` : ''); }
 const SEASON_YEAR = 2026;
 
 /* =========================================================
@@ -5731,7 +5739,7 @@ function milestonesFor(leagueId, eff, games) {
   return out;
 }
 
-function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
+function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames, trades }) {
   const league = getLeague(leagueId);
   const isFootball = league && league.sport === 'Football';
   const table = seasonTable(games, leagueId);
@@ -5740,6 +5748,7 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
   const prevWeek = games.filter(g => g.league === leagueId && g.week === week - 1);
   const milestones = milestonesFor(leagueId, eff, games);
   const filled = matchups.filter(m => m.a && m.b);
+  const weekTrades = (trades || []).filter(t => t.league === leagueId && t.week === week).sort(tradeSort);
   const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   const cfg = PLAYOFF_CFG[leagueId] || null;
   const playedMax = games.filter(g => g.league === leagueId).reduce((m, g) => Math.max(m, g.week), 0);
@@ -5849,6 +5858,18 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
           );
         })}
       </div>
+
+      {weekTrades.length > 0 && (
+        <div className="nl-avoid" style={{ marginBottom: '18px', border: '2px solid #c99a2e', borderRadius: '8px', padding: '12px', background: '#fdf8e8' }}>
+          <h2 style={{ ...h2, borderBottom: '1px solid #e5b93f' }}>🔄 Recent League Trades</h2>
+          {weekTrades.map((t, i) => (
+            <div key={t.id || i} style={{ fontSize: '12px', padding: '5px 0', borderBottom: i < weekTrades.length - 1 ? '1px dashed #e5b93f' : 'none' }}>
+              <div><strong>{mgrName(t.a)}</strong> sends {t.aAssets} <span style={{ color: '#a67b22' }}>⇄</span> <strong>{mgrName(t.b)}</strong> sends {t.bAssets}</div>
+              {t.notes && <div style={small}>Commish notes: {t.notes}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {table.length > 0 && (
         <div className="nl-avoid" style={{ marginBottom: '18px' }}>
@@ -5967,7 +5988,7 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames }) {
   );
 }
 
-function NewsletterBuilder({ unlocked, live, eff }) {
+function NewsletterBuilder({ unlocked, live, eff, trades }) {
   const availableLeagues = DATA.leagues.filter(l => unlocked.includes(l.id));
   const [leagueId, setLeagueId] = useState(() => (availableLeagues[0] || DATA.leagues[0]).id);
   const maxWeek = useMemo(() => {
@@ -6145,8 +6166,165 @@ function NewsletterBuilder({ unlocked, live, eff }) {
 
       <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">Preview</p>
       <div className="border border-sky-100 rounded-lg shadow-gold-glow bg-white overflow-x-auto">
-        <NewsletterDoc leagueId={leagueId} week={week} matchups={matchups} eff={eff} games={live.parsed.games} regGames={regGames} />
+        <NewsletterDoc leagueId={leagueId} week={week} matchups={matchups} eff={eff} games={live.parsed.games} regGames={regGames} trades={trades || []} />
       </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   TRADES
+   ========================================================= */
+function TradeCard({ t, onDelete }) {
+  const side = (id, assets, label) => (
+    <div className="flex-1 min-w-[180px]">
+      <p className="font-serif text-slate-800 font-semibold">{mgrName(id)}</p>
+      <p className="text-[11px] uppercase tracking-wide text-slate-400 mt-1">{label}</p>
+      <p className="text-sm text-slate-700 whitespace-pre-wrap">{assets}</p>
+    </div>
+  );
+  return (
+    <div className="bg-white border border-sky-100 rounded-lg shadow-gold-glow p-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <Badge className="border-sky-300 text-sky-700 bg-sky-50">{tradeWhen(t)}</Badge>
+        {onDelete && <button onClick={() => onDelete(t.id)} className="text-xs text-red-500 hover:text-red-700">Delete</button>}
+      </div>
+      <div className="flex flex-wrap items-start gap-4">
+        {side(t.a, t.aAssets, 'Sends')}
+        <div className="text-amber-600 text-xl self-center">⇄</div>
+        {side(t.b, t.bAssets, 'Sends')}
+      </div>
+      {t.notes && <p className="mt-3 pt-3 border-t border-dashed border-sky-100 text-xs text-slate-500"><strong>Commish notes:</strong> {t.notes}</p>}
+    </div>
+  );
+}
+
+function TradesView({ trades, unlocked }) {
+  const leagues = DATA.leagues.filter(l => TRADE_LEAGUES.includes(l.id) && unlocked.includes(l.id));
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-10">
+      <div className="mb-8">
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Public Archive</p>
+        <h2 className="font-serif text-3xl text-slate-800">🔄 League Trades</h2>
+        <p className="text-slate-400 text-xs mt-1">Every logged trade, oldest to newest within each league.</p>
+      </div>
+      {leagues.length === 0 && <p className="text-slate-500 text-sm">Unlock a league to see its trades.</p>}
+      {leagues.map(l => {
+        const list = trades.filter(t => t.league === l.id).sort(tradeSort);
+        return (
+          <div key={l.id} className="mb-10">
+            <h3 className="font-serif text-xl text-slate-800 mb-3 flex items-center gap-2">🏈 {l.name} <span className="text-xs text-slate-400 font-sans">({list.length} {list.length === 1 ? 'trade' : 'trades'})</span></h3>
+            {list.length === 0 ? <p className="text-slate-400 text-sm">No trades logged yet.</p> : (
+              <div className="space-y-3 border-l-2 border-sky-200 pl-4">
+                {list.map(t => <TradeCard key={t.id} t={t} />)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TradeLogger({ live, trades, setTrades }) {
+  const blank = { league: 'work', week: '1', dateText: '', a: '', aAssets: '', b: '', bAssets: '', notes: '' };
+  const [f, setF] = useState(blank);
+  const [msg, setMsg] = useState('');
+  const ids = useMemo(() => activeManagerIds(f.league, live.parsed.games), [f.league, live.parsed.games]);
+  const set = (k, v) => setF(p => ({ ...p, [k]: v, ...(k === 'league' ? { a: '', b: '' } : {}) }));
+  const inp = "w-full bg-white border border-sky-200 rounded-md px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400";
+  const lbl = "block text-xs text-slate-500 mb-1";
+  const valid = f.a && f.b && f.a !== f.b && f.aAssets.trim() && f.bAssets.trim();
+
+  function submit(e) {
+    e.preventDefault();
+    if (!valid) return;
+    const t = { id: 't' + Date.now() + Math.random().toString(36).slice(2, 6), ts: Date.now(), league: f.league, week: parseInt(f.week, 10) || 1, dateText: f.dateText.trim(), a: f.a, aAssets: f.aAssets.trim(), b: f.b, bAssets: f.bAssets.trim(), notes: f.notes.trim() };
+    const next = [...trades, t];
+    setTrades(next); saveTrades(next);
+    setF({ ...blank, league: f.league, week: f.week });
+    setMsg('Trade saved.');
+    setTimeout(() => setMsg(''), 2500);
+  }
+  function del(id) {
+    if (!window.confirm('Delete this trade?')) return;
+    const next = trades.filter(t => t.id !== id);
+    setTrades(next); saveTrades(next);
+  }
+  const recent = trades.slice().sort((x, y) => (y.ts || 0) - (x.ts || 0)).slice(0, 5);
+
+  return (
+    <div className="mt-10 pt-8 border-t border-sky-100">
+      <div className="mb-6">
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Commissioner Tools</p>
+        <h2 className="font-serif text-2xl text-slate-800">🔄 Log New Trade</h2>
+        <p className="text-slate-400 text-xs mt-1">Saved in this browser and shown on the public League Trades tab and in the newsletter.</p>
+      </div>
+      <form onSubmit={submit} className="bg-white border border-sky-100 rounded-lg shadow-gold-glow p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-1">
+            <label className={lbl}>League</label>
+            <select value={f.league} onChange={e => set('league', e.target.value)} className={inp}>
+              {DATA.leagues.filter(l => TRADE_LEAGUES.includes(l.id)).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Week</label>
+            <select value={f.week} onChange={e => set('week', e.target.value)} className={inp}>
+              {Array.from({ length: 18 }, (_, i) => i + 1).map(w => <option key={w} value={w}>Week {w}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Date (optional)</label>
+            <input type="text" value={f.dateText} onChange={e => set('dateText', e.target.value)} placeholder="e.g. Nov 3" className={inp} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={lbl}>Team A</label>
+            <select value={f.a} onChange={e => set('a', e.target.value)} className={inp}>
+              <option value="">Select…</option>
+              {ids.filter(id => id !== f.b).map(id => <option key={id} value={id}>{mgrName(id)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Team B</label>
+            <select value={f.b} onChange={e => set('b', e.target.value)} className={inp}>
+              <option value="">Select…</option>
+              {ids.filter(id => id !== f.a).map(id => <option key={id} value={id}>{mgrName(id)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Assets sent by Team A</label>
+            <input type="text" value={f.aAssets} onChange={e => set('aAssets', e.target.value)} placeholder="Players, draft picks, etc." className={inp} />
+          </div>
+          <div>
+            <label className={lbl}>Assets sent by Team B</label>
+            <input type="text" value={f.bAssets} onChange={e => set('bAssets', e.target.value)} placeholder="Players, draft picks, etc." className={inp} />
+          </div>
+        </div>
+        <div>
+          <label className={lbl}>Commish notes (optional)</label>
+          <textarea rows="2" value={f.notes} onChange={e => set('notes', e.target.value)} className={inp} />
+        </div>
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={!valid} className="text-sm bg-gradient-to-b from-amber-400 to-amber-600 text-white font-serif font-bold px-5 py-2 rounded-md shadow-sm hover:brightness-105 disabled:opacity-40">Save Trade</button>
+          {msg && <span className="text-emerald-600 text-sm">{msg}</span>}
+        </div>
+      </form>
+      {recent.length > 0 && (
+        <div className="mt-6">
+          <p className="text-slate-400 text-xs uppercase tracking-widest mb-2">Recently logged ({trades.length} total)</p>
+          <div className="space-y-3">
+            {recent.map(t => (
+              <div key={t.id}>
+                <p className="text-[11px] text-slate-400 mb-1">{(getLeague(t.league) || {}).name}</p>
+                <TradeCard t={t} onDelete={del} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -6154,7 +6332,7 @@ function NewsletterBuilder({ unlocked, live, eff }) {
 /* =========================================================
    SETTINGS (commissioner only)
    ========================================================= */
-function SettingsView({ live, unlocked, eff }) {
+function SettingsView({ live, unlocked, eff, trades, setTrades }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
       <div className="mb-6">
@@ -6162,7 +6340,8 @@ function SettingsView({ live, unlocked, eff }) {
         <h2 className="font-serif text-3xl text-slate-800">⚙️ Settings</h2>
       </div>
       <LiveDataPanel live={live} compact={false} />
-      <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} />
+      <TradeLogger live={live} trades={trades} setTrades={setTrades} />
+      <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} trades={trades} />
     </div>
   );
 }
@@ -6193,6 +6372,17 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby, admin }) {
               {ex.id === 'master' ? '👑 ' : ''}{ex.name}
             </button>
           ))}
+          <button
+            onClick={() => onSwitch('trades')}
+            className={
+              "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
+              (currentId === 'trades'
+                ? "bg-amber-50 border-amber-300 text-amber-700"
+                : "border-transparent text-slate-400 hover:text-amber-700 hover:border-amber-200")
+            }
+          >
+            🔄 League Trades
+          </button>
           {admin && (
             <button
               onClick={() => onSwitch('settings')}
@@ -6232,6 +6422,7 @@ function App() {
   const [pinTarget, setPinTarget] = useState(null);
   const [includeAlumni, setIncludeAlumni] = useState(false);
   const [selectedManager, setSelectedManager] = useState(null);
+  const [trades, setTrades] = useState(() => loadTrades());
 
   // ---- live sheet state ----
   const initPrefs = useMemo(() => loadPrefs(), []);
@@ -6321,7 +6512,9 @@ function App() {
 
   let body;
   if (view === 'settings' && admin) {
-    body = <SettingsView live={live} unlocked={unlocked} eff={eff} />;
+    body = <SettingsView live={live} unlocked={unlocked} eff={eff} trades={trades} setTrades={setTrades} />;
+  } else if (view === 'trades' && unlocked.length > 0) {
+    body = <TradesView trades={trades} unlocked={unlocked} />;
   } else if (!view || !currentExhibit) {
     body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} admin={admin} onSettings={() => setView('settings')} />;
   } else {

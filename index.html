@@ -4702,6 +4702,7 @@ function matchupOdds(entries, N, cfg, aId, bId) {
   const pw = cfg.perWeek || 1, bonusW = 0.5 * (pw - 1); // dual scoring: expected points-rank result is a coin flip
   const mk = (winner, loser) => entries.map(e => e.id === winner ? { ...e, w: e.w + 1 + bonusW, g: e.g + pw } : e.id === loser ? { ...e, w: e.w + bonusW, g: e.g + pw } : e);
   const base = oddsModel(entries, N, cfg.spots, cfg.byes);
+  if (!base[aId] || !base[bId]) return null;
   const aWin = oddsModel(mk(aId, bId), N, cfg.spots, cfg.byes);
   const bWin = oddsModel(mk(bId, aId), N, cfg.spots, cfg.byes);
   const side = (me, winScn, loseScn) => ({
@@ -5765,7 +5766,8 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames, trades 
   const power = computeStandings(leagueId, false, 'hof', eff.stats).slice(0, 10);
   const prevWeek = games.filter(g => g.league === leagueId && g.week === week - 1);
   const milestones = milestonesFor(leagueId, eff, games);
-  const filled = matchups.filter(m => m.a && m.b);
+  const leagueIds = new Set(activeManagerIds(leagueId, games));
+  const filled = matchups.filter(m => m.a && m.b && leagueIds.has(m.a) && leagueIds.has(m.b));
   const weekTrades = (trades || []).filter(t => t.league === leagueId && t.week === week).sort(tradeSort);
   const today = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   const cfg = PLAYOFF_CFG[leagueId] || null;
@@ -5783,7 +5785,7 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames, trades 
   if (dBase) filled.forEach((m, i) => { dByMatch[i] = dinnerMatchup(dEntries, dN, dcfg.seedGames, m.a, m.b); });
   let bigIdx = -1, bigVal = -1;
   Object.keys(oddsByMatch).forEach(k => {
-    const o = oddsByMatch[k]; const v = Math.abs(o.a.swing) + Math.abs(o.b.swing);
+    const o = oddsByMatch[k]; if (!o) return; const v = Math.abs(o.a.swing) + Math.abs(o.b.swing);
     if (v > bigVal) { bigVal = v; bigIdx = Number(k); }
   });
 
@@ -5859,7 +5861,7 @@ function NewsletterDoc({ leagueId, week, matchups, eff, games, regGames, trades 
                   })}
                 </div>
               )}
-              {oddsByMatch[i] && (
+              {oddsByMatch[i] && oddsByMatch[i].a && (
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cfe2ff', fontSize: '12px', color: '#334155' }}>
                   <div style={{ fontWeight: 700, color: '#0e74de', marginBottom: '3px' }}>Playoff odds swing{bigIdx === i ? ' — biggest of the week' : ''}</div>
                   {[['a', m.a], ['b', m.b]].map(([k, id]) => {
@@ -6655,7 +6657,21 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+class ErrorBoundary extends React.Component {
+  constructor(p) { super(p); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="max-w-xl mx-auto p-10 text-center">
+        <h2 className="font-serif text-2xl text-slate-800 mb-2">Something went wrong</h2>
+        <p className="text-slate-500 text-sm mb-4">{String(this.state.err && this.state.err.message || this.state.err)}</p>
+        <button onClick={() => window.location.reload()} className="text-sm border border-sky-300 text-sky-700 rounded-md px-4 py-2">Reload</button>
+      </div>
+    );
+  }
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><App /></ErrorBoundary>);
 </script>
 </body>
 </html>

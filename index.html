@@ -4317,6 +4317,24 @@ const DATA = {
   }
 };
 
+/* PIN overrides: saved in localStorage and applied onto DATA before anything reads it. */
+const PINS_KEY = 'hof_pins_v1';
+const DEFAULT_PINS = (() => {
+  const o = { master: DATA.master.pin, masterViewer: DATA.master.viewerPin };
+  DATA.leagues.forEach(l => { o[l.id] = l.pin; });
+  return o;
+})();
+function applyPins(p) {
+  DATA.leagues.forEach(l => { l.pin = (p && p[l.id]) || DEFAULT_PINS[l.id]; });
+  DATA.master.pin = (p && p.master) || DEFAULT_PINS.master;
+  DATA.master.viewerPin = (p && p.masterViewer) || DEFAULT_PINS.masterViewer;
+}
+function currentPins() {
+  const o = { master: DATA.master.pin, masterViewer: DATA.master.viewerPin };
+  DATA.leagues.forEach(l => { o[l.id] = l.pin; });
+  return o;
+}
+try { applyPins(JSON.parse(localStorage.getItem(PINS_KEY) || 'null')); } catch (e) {}
 const ALL_EXHIBITS = [...DATA.leagues, DATA.master];
 const STORAGE_KEY = 'hof_unlocked_exhibits_v1';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRTHarc2GTnYC9ntr__erNMVTz9UmaQbGS6tuO6oEe976DHPL_PhZhLB5EQ4RRp9GCM9WM2Iv6MgflQ/pub?gid=348141357&single=true&output=csv';
@@ -6330,6 +6348,73 @@ function TradeLogger({ live, trades, setTrades }) {
 }
 
 /* =========================================================
+   PIN MANAGER
+   ========================================================= */
+function PinManager() {
+  const [pins, setPins] = useState(currentPins());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(pins);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const rows = [
+    ...DATA.leagues.map(l => ({ key: l.id, label: l.name })),
+    { key: 'master', label: 'Master PIN (commissioner override, unlocks everything)' },
+    { key: 'masterViewer', label: 'Master viewer PIN (unlocks only the Master leaderboard)' },
+  ];
+  function save() {
+    const vals = rows.map(r => draft[r.key]);
+    if (vals.some(v => !/^\d{4}$/.test(v))) { setErr('Every PIN must be exactly 4 digits.'); return; }
+    if (new Set(vals).size !== vals.length) { setErr('Each PIN must be unique.'); return; }
+    applyPins(draft);
+    try { localStorage.setItem(PINS_KEY, JSON.stringify(draft)); } catch (e) {}
+    setPins(currentPins()); setEditing(false); setErr('');
+    setMsg('PINs saved.'); setTimeout(() => setMsg(''), 2500);
+  }
+  function reset() {
+    if (!window.confirm('Reset all PINs to the original defaults?')) return;
+    applyPins(null);
+    try { localStorage.removeItem(PINS_KEY); } catch (e) {}
+    setPins(currentPins()); setEditing(false); setErr('');
+  }
+  return (
+    <div className="mt-10 pt-8 border-t border-sky-100">
+      <div className="mb-6">
+        <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Commissioner Tools</p>
+        <h2 className="font-serif text-2xl text-slate-800">🔑 League &amp; Master PINs</h2>
+        <p className="text-slate-400 text-xs mt-1">Changes are saved in this browser only. Other devices keep using the PINs built into the file.</p>
+      </div>
+      <div className="bg-white border border-sky-100 rounded-lg shadow-gold-glow p-5">
+        <div className="divide-y divide-sky-50">
+          {rows.map(r => (
+            <div key={r.key} className="flex items-center justify-between gap-4 py-2.5">
+              <span className="text-sm text-slate-700">{r.label}</span>
+              {editing ? (
+                <input type="text" inputMode="numeric" maxLength="4" value={draft[r.key]} onChange={e => setDraft({ ...draft, [r.key]: e.target.value.replace(/\D/g, '') })} className="w-20 text-center font-mono border border-sky-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+              ) : (
+                <span className="font-mono text-sky-700 font-bold tracking-widest">{pins[r.key]}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        {err && <p className="text-red-500 text-xs mt-3">{err}</p>}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {editing ? (
+            <React.Fragment>
+              <button onClick={save} className="text-sm bg-gradient-to-b from-amber-400 to-amber-600 text-white font-serif font-bold px-5 py-2 rounded-md shadow-sm hover:brightness-105">Save PINs</button>
+              <button onClick={() => { setEditing(false); setErr(''); }} className="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 rounded-md px-3 py-2">Cancel</button>
+            </React.Fragment>
+          ) : (
+            <button onClick={() => { setDraft(pins); setEditing(true); setMsg(''); }} className="text-sm bg-gradient-to-b from-amber-400 to-amber-600 text-white font-serif font-bold px-5 py-2 rounded-md shadow-sm hover:brightness-105">Edit PINs</button>
+          )}
+          <button onClick={reset} className="text-xs border border-slate-200 text-slate-500 hover:text-slate-800 rounded-md px-3 py-2">Reset to defaults</button>
+          {msg && <span className="text-emerald-600 text-sm">{msg}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
    SETTINGS (commissioner only)
    ========================================================= */
 function SettingsView({ live, unlocked, eff, trades, setTrades }) {
@@ -6340,6 +6425,7 @@ function SettingsView({ live, unlocked, eff, trades, setTrades }) {
         <h2 className="font-serif text-3xl text-slate-800">⚙️ Settings</h2>
       </div>
       <LiveDataPanel live={live} compact={false} />
+      <PinManager />
       <TradeLogger live={live} trades={trades} setTrades={setTrades} />
       <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} trades={trades} />
     </div>

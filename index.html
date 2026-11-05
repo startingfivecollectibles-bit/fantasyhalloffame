@@ -4509,10 +4509,39 @@ function parseLive(csvText) {
   games.forEach(g => { leagueCounts[g.league] = (leagueCounts[g.league] || 0) + 1; });
   return { games, diag: { headers, rowCount: rows.length - 1, parsed, skipped, unmatched: Array.from(unmatched), unmatchedLeagues: Array.from(unmatchedLeagues), leagueIdx, leagueCounts, weeks, note: '' } };
 }
+/* Dual scoring (Zero Prep Battle of the Sexes): every week each manager also earns a second result
+   from total points scored. Managers are ranked by score; the top half (5 of 10) get an extra W,
+   the bottom half an extra L. Weekly record = H2H result + points-rank result (2-0, 1-1 or 0-2). */
+const DUAL_SCORING = { football3: true };
+function weeklyBonus(games, leagueId) {
+  const out = []; // { week, id, r: 'W' | 'L' }
+  if (!DUAL_SCORING[leagueId]) return out;
+  const byWeek = new Map();
+  games.filter(g => g.league === leagueId).forEach(g => {
+    if (!byWeek.has(g.week)) byWeek.set(g.week, []);
+    const arr = byWeek.get(g.week);
+    arr.push({ id: g.a, pts: g.aScore }); arr.push({ id: g.b, pts: g.bScore });
+  });
+  byWeek.forEach((arr, week) => {
+    const sorted = arr.slice().sort((x, y) => y.pts - x.pts);
+    const half = Math.floor(sorted.length / 2);
+    sorted.forEach((e, i) => {
+      if (i < half) out.push({ week, id: e.id, r: 'W' });
+      else if (i >= sorted.length - half) out.push({ week, id: e.id, r: 'L' });
+    });
+  });
+  return out;
+}
 function applyLive(games) {
   const stats = DATA.stats.map(s => ({ ...s }));
   const h2h = DATA.h2h.map(h => ({ ...h }));
   const findStat = (id, lg) => stats.find(s => s.managerId === id && s.league === lg);
+  Object.keys(DUAL_SCORING).forEach(lg => {
+    weeklyBonus(games, lg).forEach(b => {
+      const st = findStat(b.id, lg);
+      if (st) { if (b.r === 'W') st.wins++; else st.losses++; }
+    });
+  });
   games.forEach(g => {
     const sa = findStat(g.a, g.league), sb = findStat(g.b, g.league);
     const aw = g.aScore > g.bScore, bw = g.bScore > g.aScore;
@@ -4545,6 +4574,11 @@ function seasonTable(games, leagueId) {
     if (g.aScore > g.bScore) { A.w++; B.l++; A.results.push({ week: g.week, r: 'W' }); B.results.push({ week: g.week, r: 'L' }); }
     else if (g.bScore > g.aScore) { B.w++; A.l++; B.results.push({ week: g.week, r: 'W' }); A.results.push({ week: g.week, r: 'L' }); }
     else { A.t++; B.t++; A.results.push({ week: g.week, r: 'T' }); B.results.push({ week: g.week, r: 'T' }); }
+  });
+  weeklyBonus(games, leagueId).forEach(b => {
+    const R = ensure(b.id);
+    if (b.r === 'W') R.w++; else R.l++;
+    R.results.push({ week: b.week, r: b.r });
   });
   const rows = Array.from(map.values());
   rows.forEach(r => {
@@ -4605,7 +4639,7 @@ function detectBaselines(games) {
    - Odds = chance a team's final wins land above that line (normal approximation) */
 const PLAYOFF_CFG = {
   work: { spots: 6, byes: 2, games: 13 },
-  football3: { spots: 6, byes: 2, games: 14 },
+  football3: { spots: 6, byes: 2, games: 28, perWeek: 2 }, // 14 weeks x 2 results (H2H + points rank)
 };
 function normCdf(z) {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
@@ -4639,7 +4673,8 @@ function oddsEntries(games, leagueId) {
   return entries;
 }
 function matchupOdds(entries, N, cfg, aId, bId) {
-  const mk = (winner, loser) => entries.map(e => e.id === winner ? { ...e, w: e.w + 1, g: e.g + 1 } : e.id === loser ? { ...e, g: e.g + 1 } : e);
+  const pw = cfg.perWeek || 1, bonusW = 0.5 * (pw - 1); // dual scoring: expected points-rank result is a coin flip
+  const mk = (winner, loser) => entries.map(e => e.id === winner ? { ...e, w: e.w + 1 + bonusW, g: e.g + pw } : e.id === loser ? { ...e, w: e.w + bonusW, g: e.g + pw } : e);
   const base = oddsModel(entries, N, cfg.spots, cfg.byes);
   const aWin = oddsModel(mk(aId, bId), N, cfg.spots, cfg.byes);
   const bWin = oddsModel(mk(bId, aId), N, cfg.spots, cfg.byes);
@@ -4891,7 +4926,7 @@ function PinModal({ exhibit, onClose, onSuccess }) {
 /* =========================================================
    LOBBY
    ========================================================= */
-function Lobby({ unlocked, onSelect, onNewsletter, admin, onSettings }) {
+function Lobby({ unlocked, onSelect, admin, onSettings }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-14">
@@ -4937,24 +4972,14 @@ function Lobby({ unlocked, onSelect, onNewsletter, admin, onSettings }) {
 
       {unlocked.length > 0 && (
         <div className="mt-8">
-          <button
-            onClick={onNewsletter}
-            className="vault-card w-full text-left plaque-texture border border-sky-200 shadow-gold-glow hover:border-sky-400 rounded-lg p-6 flex items-center justify-between gap-4"
-          >
-            <div>
-              <h3 className="font-serif text-lg text-slate-800">📰 Weekly Newsletter Builder</h3>
-              <p className="text-slate-400 text-xs mt-1">Pick matchups, pull H2H history and live standings, export a PDF.</p>
-            </div>
-            <span className="text-sky-600 text-sm font-medium whitespace-nowrap">Open →</span>
-          </button>
           {admin && (
             <button
               onClick={onSettings}
-              className="vault-card mt-4 w-full text-left plaque-texture border border-slate-200 shadow-gold-glow hover:border-slate-400 rounded-lg p-6 flex items-center justify-between gap-4"
+              className="vault-card w-full text-left plaque-texture border border-slate-200 shadow-gold-glow hover:border-slate-400 rounded-lg p-6 flex items-center justify-between gap-4"
             >
               <div>
                 <h3 className="font-serif text-lg text-slate-800">⚙️ Settings</h3>
-                <p className="text-slate-400 text-xs mt-1">Live 2026 sheet data, baselines and sync status (commissioner only).</p>
+                <p className="text-slate-400 text-xs mt-1">Live 2026 sheet data, baselines, sync status and the Weekly Newsletter Builder (commissioner only).</p>
               </div>
               <span className="text-slate-600 text-sm font-medium whitespace-nowrap">Open →</span>
             </button>
@@ -6065,10 +6090,10 @@ function NewsletterBuilder({ unlocked, live, eff }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="mt-10 pt-8 border-t border-sky-100">
       <div className="mb-6">
         <p className="text-sky-600 text-xs uppercase tracking-widest font-semibold mb-1">Commissioner Tools</p>
-        <h2 className="font-serif text-3xl text-slate-800">📰 Weekly Newsletter Builder</h2>
+        <h2 className="font-serif text-2xl text-slate-800">📰 Weekly Newsletter Builder</h2>
       </div>
 
       <p className="text-xs text-slate-400 mb-4">
@@ -6094,8 +6119,8 @@ function NewsletterBuilder({ unlocked, live, eff }) {
         {(PLAYOFF_CFG[leagueId] || LAST_CFG[leagueId]) ? (
           <div className="mb-5 flex flex-wrap items-center gap-3 text-xs text-slate-600">
             <span>{PLAYOFF_CFG[leagueId] ? `Playoff odds on: ${PLAYOFF_CFG[leagueId].spots} teams, top ${PLAYOFF_CFG[leagueId].byes} get byes.` : 'League odds on: chance to win the league (best final record), then chance of finishing last (buys dinner).'}</span>
-            <label className="flex items-center gap-2">Regular-season games:
-              <input type="number" min="1" max="20" value={regGames} onChange={e => setRegGames(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-16 border border-sky-200 rounded px-2 py-1" />
+            <label className="flex items-center gap-2">{DUAL_SCORING[leagueId] ? 'Regular-season results (14 wks × 2):' : 'Regular-season games:'}
+              <input type="number" min="1" max="40" value={regGames} onChange={e => setRegGames(Math.max(1, parseInt(e.target.value, 10) || 1))} className="w-16 border border-sky-200 rounded px-2 py-1" />
             </label>
           </div>
         ) : <p className="mb-5 text-xs text-slate-400">Odds are included for Horner, Battle of the Sexes (playoffs) and Jon Bought Dinner (league race).</p>}
@@ -6129,7 +6154,7 @@ function NewsletterBuilder({ unlocked, live, eff }) {
 /* =========================================================
    SETTINGS (commissioner only)
    ========================================================= */
-function SettingsView({ live }) {
+function SettingsView({ live, unlocked, eff }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
       <div className="mb-6">
@@ -6137,6 +6162,7 @@ function SettingsView({ live }) {
         <h2 className="font-serif text-3xl text-slate-800">⚙️ Settings</h2>
       </div>
       <LiveDataPanel live={live} compact={false} />
+      <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} />
     </div>
   );
 }
@@ -6167,17 +6193,6 @@ function Header({ unlocked, currentId, onSwitch, onLock, onGoLobby, admin }) {
               {ex.id === 'master' ? '👑 ' : ''}{ex.name}
             </button>
           ))}
-          <button
-            onClick={() => onSwitch('newsletter')}
-            className={
-              "px-3 py-1.5 rounded-md text-xs font-serif tracking-wide whitespace-nowrap transition border " +
-              (currentId === 'newsletter'
-                ? "bg-amber-50 border-amber-300 text-amber-700"
-                : "border-transparent text-slate-400 hover:text-amber-700 hover:border-amber-200")
-            }
-          >
-            📰 Newsletter
-          </button>
           {admin && (
             <button
               onClick={() => onSwitch('settings')}
@@ -6303,15 +6318,12 @@ function App() {
   }
 
   const currentExhibit = ALL_EXHIBITS.find(e => e.id === view) || null;
-  const newsletterLeagues = DATA.leagues.filter(l => unlocked.includes(l.id));
 
   let body;
-  if (view === 'newsletter' && newsletterLeagues.length > 0) {
-    body = <NewsletterBuilder unlocked={unlocked} live={live} eff={eff} />;
-  } else if (view === 'settings' && admin) {
-    body = <SettingsView live={live} />;
+  if (view === 'settings' && admin) {
+    body = <SettingsView live={live} unlocked={unlocked} eff={eff} />;
   } else if (!view || !currentExhibit) {
-    body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} onNewsletter={() => setView('newsletter')} admin={admin} onSettings={() => setView('settings')} />;
+    body = <Lobby unlocked={unlocked} onSelect={handleSelectExhibit} admin={admin} onSettings={() => setView('settings')} />;
   } else {
     body = (
       <ExhibitView
